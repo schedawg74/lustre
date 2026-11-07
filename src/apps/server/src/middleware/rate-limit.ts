@@ -9,12 +9,15 @@ export type RateLimits = {
   installsPerIp: number;
   // Requests per minute and install token.
   perToken: number;
+  // Requests per minute and IP address on the public stats.
+  statsPerIp: number;
 };
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
   installsPerIp: 10,
   perIp: 120,
   perToken: 60,
+  statsPerIp: 10,
 };
 
 const limiter = (
@@ -37,6 +40,8 @@ const byIp = (...[req]: Parameters<RequestHandler>) =>
   ipKeyGenerator(req.ip ?? "unknown");
 
 export const limitPerIp = (limit: number) => limiter(limit, 60_000, byIp);
+
+export const limitStatsPerIp = (limit: number) => limiter(limit, 60_000, byIp);
 
 export const limitInstallsPerIp = (limit: number) =>
   limiter(limit, 60 * 60_000, byIp);

@@ -65,10 +65,49 @@ describe("createLustreApi", () => {
       jsonResponse(200, { accounts: [], nextCursor: null }),
       "t0k"
     );
-    await api.getBlocklist({ cursor: "42", minReporters: 3 });
+    await api.getBlocklist({ cursor: "42", listId: "7", minReporters: 3 });
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "https://lustre.test/v1/blocklist?cursor=42&minReporters=3"
+      "https://lustre.test/v1/blocklist?cursor=42&listId=7&minReporters=3"
     );
+  });
+
+  it("gets the known lists with the bearer token", async () => {
+    const body = {
+      lists: [
+        {
+          accounts: 2,
+          firstReportedAt: "2026-11-07T12:00:00.000Z",
+          id: "7",
+          lastReportedAt: "2026-11-07T12:00:00.000Z",
+          name: null,
+          ownerScreenName: "list_owner",
+          reporters: 1,
+        },
+      ],
+      nextCursor: null,
+    };
+    const { api, fetchMock } = setup(jsonResponse(200, body), "t0k");
+    await expect(api.getLists({ limit: 10 })).resolves.toEqual(body);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("https://lustre.test/v1/lists?limit=10");
+    expect(init?.headers).toMatchObject({ authorization: "Bearer t0k" });
+  });
+
+  it("gets the public stats without a token", async () => {
+    const body = {
+      accountsBlocked: 1,
+      recent: [
+        {
+          blockedAt: "2026-11-07T12:00:00.000Z",
+          maskedHandle: "slo\u2022\u2022\u2022bot",
+        },
+      ],
+    };
+    const { api, fetchMock } = setup(jsonResponse(200, body));
+    await expect(api.stats()).resolves.toEqual(body);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("https://lustre.test/v1/stats");
+    expect(init?.headers).not.toHaveProperty("authorization");
   });
 
   it("refuses an authenticated call without a token", async () => {

@@ -25,8 +25,8 @@ curator that cleans the YouTube home feed using your own AI subscription.
 installs block or mute, and serves them as a shared blocklist. The extension
 does not use it yet. When it does, sharing is opt-in. A report contains only
 the blocked account's public data (user id, handle, display name), the action,
-where it came from (`list:<id>` or `post`), the time, and an anonymous install
-id. It never contains your X identity, cookies, or tokens.
+where it came from (a post, or an X list with its id, name, and owner), the
+time, and an anonymous install id. It never contains your X identity, cookies, or tokens.
 
 ```sh
 pnpm dev:server             # http://localhost:3000, SQLite in src/apps/server/.data/

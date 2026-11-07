@@ -1,5 +1,5 @@
 import type { Report } from "@lustre/api/v1";
-import { installs } from "@lustre/db";
+import { installs, reports } from "@lustre/db";
 import { createTestDatabase } from "@lustre/db/testing";
 import { pino } from "pino";
 import request from "supertest";
@@ -21,7 +21,13 @@ const setup = (limits?: AppOptions["limits"]) => {
   openDatabases.push(close);
   let now = NOW;
   const app = createApp({
-    limits: { installsPerIp: 100, perIp: 1000, perToken: 1000, ...limits },
+    limits: {
+      installsPerIp: 100,
+      perIp: 1000,
+      perToken: 1000,
+      statsPerIp: 1000,
+      ...limits,
+    },
     logger: pino({ level: "silent" }),
     services: createServices(db, () => now),
     trustProxyHops: 0,
@@ -33,18 +39,30 @@ const setup = (limits?: AppOptions["limits"]) => {
     const response = await request(app).post("/v1/installs").expect(201);
     return response.body as { installId: string; token: string };
   };
-  return { app, createInstall, db, setNow };
+  const send = (token: string, batch: Report[]) =>
+    request(app)
+      .post("/v1/reports")
+      .auth(token, { type: "bearer" })
+      .send({ reports: batch })
+      .expect(200);
+  return { app, createInstall, db, send, setNow };
 };
+
+const LIST_ID = "2116659176894071283";
 
 const report = (overrides: Partial<Report> = {}): Report => ({
   action: "block",
+  list: { id: LIST_ID },
   name: "Slop Bot",
   reportedAt: "2026-11-07T11:00:00.000Z",
   screenName: "slop_bot",
-  source: "list:2116659176894071283",
+  source: "list",
   userId: "1001",
   ...overrides,
 });
+
+const postReport = (overrides: Partial<Report> = {}): Report =>
+  report({ list: undefined, source: "post", ...overrides });
 
 describe("GET /health", () => {
   it("answers with security headers and no CORS for web origins", async () => {
@@ -183,25 +201,164 @@ describe("POST /v1/reports", () => {
   });
 });
 
+describe("list attribution", () => {
+  const listOf = async (app: ReturnType<typeof setup>["app"], token: string) =>
+    (
+      await request(app)
+        .get("/v1/lists")
+        .auth(token, { type: "bearer" })
+        .expect(200)
+    ).body;
+
+  it("keeps one report per install, account, and action with the newest list", async () => {
+    const { createInstall, db, send } = setup();
+    const { token } = await createInstall();
+    await send(token, [
+      report({ list: { id: "7", name: "Spam" }, userId: "1001" }),
+    ]);
+    const { body } = await send(token, [
+      report({
+        list: { id: "8" },
+        reportedAt: "2026-11-07T11:30:00.000Z",
+        userId: "1001",
+      }),
+      report({
+        list: { id: "9" },
+        reportedAt: "2026-11-07T10:00:00.000Z",
+        userId: "1001",
+      }),
+    ]);
+    expect(body).toEqual({ duplicates: 2, received: 2, recorded: 0 });
+    const rows = db.select().from(reports).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ listId: "8", source: "list" });
+    expect(rows[0]?.reportedAt.toISOString()).toBe("2026-11-07T11:30:00.000Z");
+    await send(token, [
+      postReport({ reportedAt: "2026-11-07T11:45:00.000Z", userId: "1001" }),
+    ]);
+    expect(db.select().from(reports).all()[0]).toMatchObject({
+      listId: null,
+      source: "post",
+    });
+  });
+
+  it("keeps a list name and owner until a newer report has others", async () => {
+    const { app, createInstall, send } = setup();
+    const first = await createInstall();
+    const second = await createInstall();
+    await send(first.token, [
+      report({
+        list: { id: "7", name: "Spam", ownerScreenName: "owner" },
+        userId: "1001",
+      }),
+    ]);
+    await send(second.token, [
+      report({
+        list: { id: "7" },
+        reportedAt: "2026-11-07T11:30:00.000Z",
+        userId: "1002",
+      }),
+    ]);
+    expect((await listOf(app, first.token)).lists).toEqual([
+      {
+        accounts: 2,
+        firstReportedAt: "2026-11-07T11:00:00.000Z",
+        id: "7",
+        lastReportedAt: "2026-11-07T11:30:00.000Z",
+        name: "Spam",
+        ownerScreenName: "owner",
+        reporters: 2,
+      },
+    ]);
+    await send(second.token, [
+      report({
+        list: { id: "7", name: "Spam bots" },
+        reportedAt: "2026-11-07T11:40:00.000Z",
+        userId: "1003",
+      }),
+      report({
+        list: { id: "7", name: "Old name", ownerScreenName: "old_owner" },
+        reportedAt: "2026-11-01T00:00:00.000Z",
+        userId: "1004",
+      }),
+    ]);
+    expect((await listOf(app, first.token)).lists[0]).toMatchObject({
+      accounts: 4,
+      firstReportedAt: "2026-11-01T00:00:00.000Z",
+      name: "Spam bots",
+      ownerScreenName: "owner",
+    });
+  });
+
+  it("filters the blocklist by list and caps the list ids", async () => {
+    const { app, createInstall, send } = setup();
+    const installTokens: string[] = [];
+    for (let index = 0; index < 13; index += 1) {
+      installTokens.push((await createInstall()).token);
+    }
+    for (const [index, token] of installTokens.entries()) {
+      // Installs 0 to 10 use lists 10 to 20; 11 and 12 use list 99.
+      const listId = index > 10 ? "99" : String(10 + index);
+      await send(token, [report({ list: { id: listId }, userId: "1001" })]);
+    }
+    await send(installTokens[0] ?? "", [
+      report({ list: { id: "10" }, userId: "1002" }),
+      postReport({ userId: "1003" }),
+    ]);
+    const token = installTokens[0] ?? "";
+    const all = await request(app)
+      .get("/v1/blocklist")
+      .auth(token, { type: "bearer" })
+      .expect(200);
+    expect(
+      all.body.accounts.map((a: { listIds: string[] }) => a.listIds)
+    ).toEqual([
+      ["99", "10", "11", "12", "13", "14", "15", "16", "17", "18"],
+      ["10"],
+      [],
+    ]);
+    const filtered = await request(app)
+      .get("/v1/blocklist")
+      .query({ listId: "10", minReporters: "2" })
+      .auth(token, { type: "bearer" })
+      .expect(200);
+    expect(filtered.body.accounts).toHaveLength(1);
+    expect(filtered.body.accounts[0]).toMatchObject({
+      reporters: 13,
+      userId: "1001",
+    });
+    const lists = await request(app)
+      .get("/v1/lists")
+      .query({ limit: "2" })
+      .auth(token, { type: "bearer" })
+      .expect(200);
+    expect(lists.body.lists.map((list: { id: string }) => list.id)).toEqual([
+      "10",
+      "11",
+    ]);
+    expect(lists.body.lists[0]).toMatchObject({ accounts: 2, reporters: 1 });
+    expect(lists.body.nextCursor).toBe("11");
+  });
+
+  it("needs a valid token for the lists", async () => {
+    const { app } = setup();
+    await request(app).get("/v1/lists").expect(401);
+  });
+});
+
 describe("GET /v1/blocklist", () => {
   const seed = async () => {
     const context = setup();
-    const { app, createInstall } = context;
+    const { app, createInstall, send } = context;
     const first = await createInstall();
     const second = await createInstall();
-    const send = (token: string, reports: Report[]) =>
-      request(app)
-        .post("/v1/reports")
-        .auth(token, { type: "bearer" })
-        .send({ reports })
-        .expect(200);
     await send(first.token, [
       report({ userId: "1001" }),
       report({ screenName: "old_name", userId: "1002" }),
       report({ reportedAt: "2026-11-01T00:00:00.000Z", userId: "1003" }),
     ]);
     await send(second.token, [
-      report({ action: "mute", source: "post", userId: "1001" }),
+      postReport({ action: "mute", userId: "1001" }),
       report({
         reportedAt: "2026-11-07T11:30:00.000Z",
         screenName: "new_name",
@@ -236,6 +393,7 @@ describe("GET /v1/blocklist", () => {
         {
           firstReportedAt: "2026-11-07T11:00:00.000Z",
           lastReportedAt: "2026-11-07T11:00:00.000Z",
+          listIds: [LIST_ID],
           name: "Slop Bot",
           reporters: 2,
           screenName: "slop_bot",
@@ -244,6 +402,7 @@ describe("GET /v1/blocklist", () => {
         {
           firstReportedAt: "2026-11-07T10:00:00.000Z",
           lastReportedAt: "2026-11-07T11:30:00.000Z",
+          listIds: [LIST_ID],
           name: "Slop Bot",
           reporters: 2,
           screenName: "new_name",
@@ -252,6 +411,7 @@ describe("GET /v1/blocklist", () => {
         {
           firstReportedAt: "2026-11-01T00:00:00.000Z",
           lastReportedAt: "2026-11-01T00:00:00.000Z",
+          listIds: [LIST_ID],
           name: "Slop Bot",
           reporters: 1,
           screenName: "slop_bot",
@@ -310,6 +470,66 @@ describe("GET /v1/blocklist", () => {
       .get("/v1/blocklist?minReporters=0")
       .auth(token, { type: "bearer" })
       .expect(400);
+  });
+});
+
+describe("GET /v1/stats", () => {
+  it("is public, cached, and shows only masked handles of blocked accounts", async () => {
+    const { app, createInstall, send, setNow } = setup();
+    const { token } = await createInstall();
+    await send(token, [
+      report({ screenName: "slop_bot", userId: "1001" }),
+      report({
+        reportedAt: "2026-11-07T11:30:00.000Z",
+        screenName: "spam",
+        userId: "1002",
+      }),
+      report({ action: "mute", screenName: "muted_only", userId: "1003" }),
+    ]);
+    const response = await request(app)
+      .get("/v1/stats")
+      .set("origin", "https://lustre.example")
+      .expect(200);
+    expect(response.body).toEqual({
+      accountsBlocked: 2,
+      recent: [
+        {
+          blockedAt: "2026-11-07T11:30:00.000Z",
+          maskedHandle: "s\u2022\u2022\u2022",
+        },
+        {
+          blockedAt: "2026-11-07T11:00:00.000Z",
+          maskedHandle: "slo\u2022\u2022\u2022bot",
+        },
+      ],
+    });
+    expect(response.headers["cache-control"]).toBe("public, max-age=60");
+    expect(response.headers["access-control-allow-origin"]).toBe("*");
+    expect(JSON.stringify(response.body)).not.toMatch(/100\d|slop_bot|spam/);
+
+    await send(token, [report({ userId: "1004" })]);
+    setNow(new Date("2026-11-07T12:00:59.000Z"));
+    expect((await request(app).get("/v1/stats")).body.accountsBlocked).toBe(2);
+    setNow(new Date("2026-11-07T12:01:00.000Z"));
+    expect((await request(app).get("/v1/stats")).body.accountsBlocked).toBe(3);
+  });
+
+  it("allows only GET from other origins", async () => {
+    const { app } = setup();
+    const response = await request(app)
+      .options("/v1/stats")
+      .set("origin", "https://lustre.example")
+      .set("access-control-request-method", "GET")
+      .expect(204);
+    expect(response.headers["access-control-allow-methods"]).toBe("GET");
+    await request(app).post("/v1/stats").expect(404);
+  });
+
+  it("limits requests per IP address", async () => {
+    const { app } = setup({ statsPerIp: 1 });
+    await request(app).get("/v1/stats").expect(200);
+    const response = await request(app).get("/v1/stats").expect(429);
+    expect(response.body.error.code).toBe("RATE_LIMITED");
   });
 });
 

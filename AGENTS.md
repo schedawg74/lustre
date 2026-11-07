@@ -27,7 +27,7 @@ Lustre is a personal browser extension. It removes unwanted content from X, and 
 - Do not add wrappers that only forward a value, await a call, or read a property.
 - Build page DOM with `createElement` and `createElementNS`, never `innerHTML`: x.com enforces Trusted Types. Prefix every injected class name with `lustre-`.
 - Call hooks at the top level. Give iterators stable keys. Calculate derived state during render; use `useMemo` for expensive work. Do not derive state in `useEffect`.
-- No data leaves the browser, with one opt-in exception: sharing blocks with the Lustre server. It sends only the blocked account's public data (user id, handle, display name, action, source, time) and an anonymous install id, never the reporter's X identity, cookies, or tokens. There are no analytics. A future AI feature sends only the content it must score, and only to the provider the owner configured. See [conventions](.agents/memory/conventions.md).
+- No data leaves the browser, with one opt-in exception: sharing blocks with the Lustre server. It sends only the blocked account's public data (user id, handle, display name, action, source, the source X list, time) and an anonymous install id, never the reporter's X identity, cookies, or tokens. There are no analytics. A future AI feature sends only the content it must score, and only to the provider the owner configured. See [conventions](.agents/memory/conventions.md).
 
 ## Checks
 

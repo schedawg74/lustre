@@ -1,0 +1,70 @@
+# Routes of the Lustre host. Caddy reads the variables from /etc/lustre/caddy.env,
+# which cloud-init writes from the Pulumi stack:
+#   LUSTRE_DOMAIN           apex domain, for example lustre.example
+#   LUSTRE_TRUSTED_PROXIES  Cloudflare ranges when cloudflareProxy is on, else empty
+#
+#   https://<domain>      website, static files from /srv/www/current
+#   https://www.<domain>  permanent redirect to the apex
+#   https://api.<domain>  reverse proxy to the API (127.0.0.1:3000)
+#
+# Caddy writes no access log, so client IP addresses are not stored.
+{
+	servers {
+		# Behind Cloudflare, {client_ip} is the visitor from CF-Connecting-IP.
+		# Without trusted proxies, Caddy ignores the header.
+		trusted_proxies static {$LUSTRE_TRUSTED_PROXIES}
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+{$LUSTRE_DOMAIN} {
+	import security_headers
+	header {
+		# Astro inlines small scripts and styles, so inline code is allowed.
+		# The page reads https://api.<domain>/v1/stats from the browser.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.{$LUSTRE_DOMAIN}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	}
+	# Astro writes bundled files with a content hash under /_astro/.
+	@hashed path /_astro/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	# HTML and other files without a hash in the name: revalidate every time.
+	# The ETag makes a revalidation cheap.
+	@unhashed not path /_astro/*
+	header @unhashed Cache-Control "public, max-age=0, must-revalidate"
+
+	root * /srv/www/current
+	encode zstd gzip
+	try_files {path} {path}.html
+	file_server
+
+	handle_errors 404 {
+		import security_headers
+		rewrite * /404.html
+		file_server
+	}
+}
+
+www.{$LUSTRE_DOMAIN} {
+	import security_headers
+	redir https://{$LUSTRE_DOMAIN}{uri} permanent
+}
+
+api.{$LUSTRE_DOMAIN} {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000 {
+		# One address, so the server's TRUST_PROXY_HOPS=1 sees the visitor.
+		header_up X-Forwarded-For {client_ip}
+	}
+}

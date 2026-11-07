@@ -1,0 +1,53 @@
+# Runtime of the Lustre host. deploy-server.yml copies this folder to /data/app
+# (on the data volume) and runs bin/deploy-server. Cloud-init writes the files
+# in /etc/lustre; bin/deploy-server writes .env (SERVER_TAG).
+name: lustre
+
+x-litestream: &litestream
+  image: litestream/litestream:0.5.18
+  # The `node` user of the server image. /data/db belongs to it.
+  user: "1000:1000"
+  env_file: /etc/lustre/litestream.env
+  volumes: ["/data/db:/data", "./litestream.yml:/etc/litestream.yml:ro"]
+
+services:
+  # Restores the database from the backup when /data/db has none, for example on a new volume.
+  restore:
+    <<: *litestream
+    command: [restore, -config, /etc/litestream.yml, -if-db-not-exists, -if-replica-exists, /data/lustre.db]
+
+  server:
+    image: ghcr.io/schedawg74/lustre-server:${SERVER_TAG:?Set SERVER_TAG in .env}
+    restart: unless-stopped
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      LOG_LEVEL: info
+      TRUST_PROXY_HOPS: "1"
+    # Loopback only. Caddy is the public entry.
+    ports: ["127.0.0.1:3000:3000"]
+    volumes: ["/data/db:/data"]
+
+  # Streams every change of the SQLite file to Hetzner Object Storage.
+  litestream:
+    <<: *litestream
+    command: [replicate, -config, /etc/litestream.yml]
+    restart: unless-stopped
+    # Time to upload the last WAL frames at shutdown.
+    stop_grace_period: 30s
+    depends_on:
+      server:
+        condition: service_healthy
+
+  # TLS, the website (/data/www/current), and the reverse proxy to the API.
+  caddy:
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    depends_on: [server]
+    env_file: /etc/lustre/caddy.env
+    # The host network keeps the client address. Docker's port proxy replaces
+    # it for IPv6, and the rate limits of the API count per address.
+    network_mode: host
+    # Mount the folder, not the file: a replaced file keeps the old inode in the container.
+    volumes: ["./caddy:/etc/caddy:ro", "/data/caddy:/data", "/data/www:/srv/www:ro"]

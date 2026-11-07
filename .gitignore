@@ -56,3 +56,6 @@ coverage
 .cache
 tmp
 temp
+
+# Local SQLite files of the server
+.data

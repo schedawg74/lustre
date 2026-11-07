@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/dist
+**/.output
+**/.wxt
+**/.turbo
+**/.data
+*.db
+*.db-*

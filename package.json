@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@lustre/extension",
     "dev:firefox": "pnpm --filter @lustre/extension dev:firefox",
+    "dev:server": "pnpm --filter @lustre/server dev",
     "format": "biome check --write .",
     "lint": "biome check .",
     "prepare": "husky",

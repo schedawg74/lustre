@@ -1,0 +1,14 @@
+# Local run of the blocklist server image: docker compose up --build
+# The API listens on http://127.0.0.1:3000. The SQLite file is in the `data` volume.
+name: lustre
+services:
+  server:
+    build:
+      context: .
+      dockerfile: src/apps/server/Dockerfile
+    environment:
+      LOG_LEVEL: debug
+    ports: ["127.0.0.1:3000:3000"]
+    volumes: ["data:/data"]
+volumes:
+  data:

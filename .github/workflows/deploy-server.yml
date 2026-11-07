@@ -1,0 +1,121 @@
+name: Deploy server
+# Runs CI, builds the server image for Arm and x86, pushes it to GHCR, copies
+# the host runtime files (src/packages/infra/host: compose.yaml, Caddyfile,
+# litestream.yml, deploy scripts) to the Hetzner host over Tailscale SSH, and
+# starts the image. See .agents/memory/infrastructure.md.
+#
+#   gh workflow run deploy-server.yml --ref main -f confirm=main
+run-name: deploy server ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Repeat the branch or tag name to deploy it to production.
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# One lock for every job that changes production.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/schedawg74/lustre-server
+
+jobs:
+  confirm:
+    name: Check the confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          CONFIRM: ${{ inputs.confirm }}
+          REF: ${{ github.ref_name }}
+        run: |
+          if [ "$CONFIRM" != "$REF" ]; then
+            echo "::error::A production deploy needs confirm=$REF"
+            exit 1
+          fi
+
+  ci:
+    name: CI
+    needs: confirm
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  build:
+    name: Build and push the image
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Hetzner Arm (cax) and x86 (cx, cpx, ccx) servers run the same image.
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: src/apps/server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+  deploy:
+    name: Start the image on the host
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # An ephemeral tailnet node with tag:ci. The tailnet policy must allow
+      # tag:ci to use Tailscale SSH as `deploy` on the host's tag.
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ vars.LUSTRE_TAILSCALE_HOST }}
+
+      - name: Copy the runtime files to the host
+        env:
+          HOST: ${{ vars.LUSTRE_TAILSCALE_HOST }}
+        run: |
+          tar -C src/packages/infra/host -czf - . |
+            tailscale ssh "deploy@$HOST" \
+              'rm -rf /data/app/incoming && mkdir /data/app/incoming && tar -xzf - -C /data/app/incoming'
+
+      # deploy-server checks the new files (docker compose config, caddy
+      # validate), installs them in /data/app, writes the tag to .env, runs
+      # `docker compose pull && docker compose up -d`, and reloads Caddy.
+      - name: Pull and start the image
+        env:
+          HOST: ${{ vars.LUSTRE_TAILSCALE_HOST }}
+        run: tailscale ssh "deploy@$HOST" /data/app/incoming/bin/deploy-server "$GITHUB_SHA"
+
+      - name: Check the health endpoint
+        env:
+          DOMAIN: ${{ vars.LUSTRE_DOMAIN }}
+        run: |
+          curl -fsS --retry 10 --retry-all-errors --retry-delay 3 "https://api.$DOMAIN/health"
+          echo "Deployed \`$IMAGE:$GITHUB_SHA\` to https://api.$DOMAIN" >> "$GITHUB_STEP_SUMMARY"

@@ -12,7 +12,8 @@
       "!!**/dist",
       "!!**/.turbo",
       "!!pnpm-lock.yaml",
-      "!!bts.jsonc"
+      "!!bts.jsonc",
+      "!!src/packages/db/migrations/meta"
     ]
   },
   "formatter": {
@@ -50,6 +51,56 @@
         "rules": {
           "suspicious": {
             "noMisplacedAssertion": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "src/apps/server/src/routers/**",
+        "src/apps/server/src/middleware/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lustre/db": "Routers and middleware call services. They do not access the database.",
+                  "@lustre/db/schema": "Routers and middleware call services. They do not access the database.",
+                  "@lustre/db/testing": "Routers and middleware call services. They do not access the database.",
+                  "drizzle-orm": "Routers and middleware call services. They do not access the database.",
+                  "better-sqlite3": "Routers and middleware call services. They do not access the database."
+                },
+                "patterns": [
+                  {
+                    "group": ["drizzle-orm/*"],
+                    "message": "Routers and middleware call services. They do not access the database."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/packages/infra/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@lustre/*"],
+                    "message": "Infrastructure code imports no workspace code."
+                  }
+                ]
+              }
+            }
           }
         }
       }

@@ -8,7 +8,7 @@ Use manifests and lockfiles for dependency versions.
 | Path under `src/` | Responsibility |
 | --- | --- |
 | `apps/extension/` | WXT extension for Chrome and Firefox (MV3). React popup, background worker, content scripts |
-| `apps/website/` | Static Astro landing page with one React island (feed of blocked accounts, counters). See [website](website.md) |
+| `apps/website/` | Static Astro landing page with one React island (animated timeline with the Lustre buttons, counters). See [website](website.md) |
 | `apps/extension/src/entrypoints/` | Manifest entry points only. Each file connects code from `src/lib/` |
 | `apps/extension/src/lib/storage.ts` | Every `storage.local` item, its type, and its default |
 | `apps/extension/src/lib/messages.ts` | The message types that the background worker accepts |

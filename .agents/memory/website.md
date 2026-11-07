@@ -18,35 +18,41 @@
 | --- | --- |
 | `site.ts` | `SITE_URL` (placeholder domain), `REPO_URL`, `INSTALL_URL` (the target of every "Add to Chrome" button: the README install section until the store listing exists), `API_URL` |
 | `pages/index.astro` | The page: head and SEO tags, hero (headline and two buttons only), features, how it works, privacy, footer |
-| `components/live-stats.tsx` | The only island (`client:visible`): the hero (passed as children), the feed of blocked accounts, and the counters |
+| `components/live-stats.tsx` | The only island (`client:visible`): the hero (passed as children), the timeline, the counters, and the stats fetch |
+| `components/x-timeline.tsx` | The animated timeline with the Lustre buttons and toast. See [Timeline](#timeline) |
+| `components/hooks.ts` | `useMedia`, `usePageVisible`, `useOnScreen` |
 | `stats.ts` | `fetchStats`, `displayHandle`, the invented post pool (`SLOP_POSTS`), and the sample data |
 | `estimates.ts` | The assumptions behind "Posts and replies hidden per week" and "Hours saved per week". The page does not show them |
-| `styles/global.css` | Tailwind and theme imports, focus ring, and the feed card animation |
+| `styles/global.css` | Tailwind and theme imports, focus ring, and the timeline styles and animation |
 
 ## Stats data
 
 - `fetchStats` uses `createLustreApi(...).stats()` from `@lustre/api`, so the Zod schema of `GET /v1/stats` validates the answer: `{ accountsBlocked, recent: { maskedHandle, blockedAt }[] }` (see [server](server.md#public-stats)). It runs in the browser only.
 - `API_URL` comes from `PUBLIC_API_URL` at build time (also a turbo build `env` key). When it is empty, the request fails, or the answer does not match the schema, the island uses `SAMPLE_STATS` (marked in the code).
 - Counters show only with live data. With sample data they show in `astro dev` (`import.meta.env.DEV`) and not at all in a production build: no frame, no note.
-- The feed may use the sample handles in production; it is an illustration. With live data and a non-empty `recent`, the feed uses the live handles.
+- The timeline may use the sample handles in production; it is an illustration. With live data and a non-empty `recent`, it uses the live handles.
 - The server stores no names or post texts. Each card pairs a handle with an invented post from `SLOP_POSTS` (display name, text, age, action counts).
 - The server sends handles masked and without `@` (first and last three characters, or only the first one below 7 characters). `displayHandle` adds `@` and masks any value without "•••" by the same rule. Never show a full handle on the page.
 - The page has no analytics. The stats request is its only request to another origin.
 
-## Feed cards
+## Timeline
 
-- A card looks like a post in a feed (look and layout only; no X logo or branding): a round avatar with the initials of the invented name (`text` on `line`; `muted` on `line` is 4.49:1 in light mode), the name in bold, the masked handle and the age in `muted`, the text, and an action row (reply, repost, like, views) with icons drawn in the Meandros style in `live-stats.tsx`.
-- The pollice icon sits where a post has its menu. Execution: the thumb turns from up to down, the card dims (`surface` to `canvas`, text to `muted`), name, handle and text get a terracotta strike (damnatio memoriae), and "Blocked by Lustre" replaces the action row. Later the card slides away.
-- Terracotta (`danger`) text is below 4.5:1 on `surface` in light mode. It is used only for the thumb and the strike (non-text, at least 3:1); the label is `muted`.
+`components/x-timeline.tsx` draws a social timeline as it looks on the web: layout and colors only, never a logo, wordmark, or the network's name.
+
+- Column: at most 600 px, one continuous surface, posts separated only by a 1 px bottom border, 1 px left and right borders. Its own colors, not the Lustre theme (`.x-timeline` in `global.css`): light `#ffffff` with `rgb(239,243,244)` borders, `#0f1419` text and `#536471` grey; dark `#000000`, `rgb(47,51,54)`, `#e7e9ea`, `#71767b`. System font stack, no Cinzel or Jost. Below 640 px the column runs to the screen edges.
+- Post: padding 12 px 16 px, a 40 px avatar column and a 12 px gap. Avatars are abstract head-and-shoulders pictures on a gradient whose hue comes from the handle. Header in 15 px: bold name, an 18 px blue rosette badge, the masked handle and age in grey, a "more" icon on the right. Text 15/20 px, at most 3 lines. Action row 12 px below, at most 425 px, space between: reply, repost, like, views with 13 px counts, then bookmark and share. The icons are drawn in the component (outline, round caps), not in the Meandros style.
+- Lustre layer: after share, the three extension buttons (pollice, tacita, aversio from `@lustre/icons/react`, 18 px, 34 px round hit area, idle `rgb(113,118,123)`). The Block hover color and the toast copy `src/apps/extension/src/entrypoints/x.content/style.css` and `lib/x/toast.ts` ("Blocked @handle", bronze "Undo"). Update both places together.
+- Below 480 px views and bookmark are hidden, so the Lustre buttons fit in the row.
+- The server stores no names or post texts. Each post pairs a masked handle with an invented post from `SLOP_POSTS` (name, text, age, counts).
 
 ## Animation rules
 
 - Pure CSS and React. No canvas, no WebGL, no animation library.
-- Every 1.3 s the island either adds a post at the top or executes the newest one. Four cards stay; the fifth slides away. Only `data-state="arriving"` cards play the entry animation.
-- The feed runs only while it is on screen and the tab is visible. With `prefers-reduced-motion: reduce` it shows a static list of blocked cards, and the counters show their final values.
-- The server render and the first client render are the static state, so the page is complete without JavaScript.
-- The feed is `aria-hidden`; one visually hidden sentence describes it. Counters animate an `aria-hidden` number and expose the final number to screen readers.
+- One cycle per post, 2.6 s (`PHASES`): the post slides in at the top (600 ms), a pause, the Block button gets its hover state, it is pressed (scale), the post collapses to height 0 while it fades, and the toast shows for about 1.5 s. Five posts stay below the newest one; the panel (30 rem high) clips the ones at the bottom.
+- The timeline runs only while it is on screen and the tab is visible. With `prefers-reduced-motion: reduce` it is a static timeline with the Lustre buttons and no toast.
+- The server render and the first client render are the static state, so the page is complete without JavaScript. `LiveStats` remounts the timeline with a new `key` when live data arrives.
+- The timeline is `aria-hidden`; one visually hidden sentence describes it. Counters animate an `aria-hidden` number and expose the final number to screen readers.
 
 ## Visual check
 
-After `build`, run `pnpm --filter @lustre/website preview` and take Playwright screenshots (Chromium from the extension's `playwright` devDependency) at 1280 px and 390 px, light and dark, plus a mid-animation frame, reduced motion, and JavaScript off. A production build without `PUBLIC_API_URL` shows no counters; check them with `pnpm dev:website`.
+After `build`, run `pnpm --filter @lustre/website preview` and take Playwright screenshots (Chromium from the extension's `playwright` devDependency) at 1280 px and 390 px, light and dark, plus a sequence of timeline frames (entering, Block hover, collapse, toast) and reduced motion. A production build without `PUBLIC_API_URL` shows no counters; check them with `pnpm dev:website`.

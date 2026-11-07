@@ -15,94 +15,160 @@
 }
 
 /*
- * The feed of blocked accounts (components/live-stats.tsx). A post arrives,
- * the thumb turns down (pollice verso), the card dims, its name, handle and
- * text are chiselled out (damnatio memoriae), "Blocked by Lustre" takes the
- * place of the actions, and later the card slides away.
+ * The timeline beside the hero (components/x-timeline.tsx). It copies the
+ * look of a social timeline on the web: its own colors and system font, not
+ * the Lustre theme. The Lustre buttons and the toast copy the extension's
+ * styles (src/apps/extension/src/entrypoints/x.content/style.css).
  */
 @layer components {
-  @keyframes feed-card-in {
-    from {
-      grid-template-rows: 0fr;
-      opacity: 0;
-      translate: 0 -0.75rem;
+  .x-timeline {
+    --x-bg: #ffffff;
+    --x-border: rgb(239, 243, 244);
+    --x-text: #0f1419;
+    --x-muted: #536471;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+      sans-serif;
+    background: var(--x-bg);
+    border-inline: 1px solid var(--x-border);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .x-timeline {
+      --x-bg: #000000;
+      --x-border: rgb(47, 51, 54);
+      --x-text: #e7e9ea;
+      --x-muted: #71767b;
     }
   }
 
-  .feed-card {
+  .x-post-body {
+    border-bottom: 1px solid var(--x-border);
+  }
+
+  .x-icon {
+    width: 18.75px;
+    height: 18.75px;
+  }
+
+  .x-badge {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+  }
+
+  .x-action {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  @keyframes x-post-in {
+    from {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+  }
+
+  .x-post {
     display: grid;
     grid-template-rows: 1fr;
     transition:
       grid-template-rows 600ms ease,
-      opacity 600ms ease,
-      translate 600ms ease;
+      opacity 500ms ease;
   }
 
-  .feed-card[data-state="arriving"] {
-    animation: feed-card-in 600ms ease-out both;
+  .x-post[data-state="entering"] {
+    animation: x-post-in 600ms ease-out both;
   }
 
-  .feed-card[data-state="leaving"] {
+  .x-post[data-state="collapsing"] {
     grid-template-rows: 0fr;
     opacity: 0;
-    translate: 2rem 0;
   }
 
-  .feed-post {
-    color: var(--color-text);
-    background: var(--color-surface);
+  /* The 34 px hit areas overlap the row, like the timeline's own buttons. */
+  .lustre-actions {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    margin-block: -8px;
+    margin-left: 4px;
+  }
+
+  /* Narrow columns: drop views and bookmark so the Lustre buttons fit. */
+  @media (max-width: 479px) {
+    .x-views,
+    .x-bookmark {
+      display: none;
+    }
+  }
+
+  .lustre-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    color: rgb(113, 118, 123);
+    border-radius: 9999px;
     transition:
-      background-color 500ms ease 200ms,
-      color 500ms ease 200ms;
+      background-color 0.15s,
+      color 0.15s,
+      scale 0.15s;
   }
 
-  .feed-thumb {
-    color: var(--color-muted);
-    rotate: 180deg;
-    transition:
-      rotate 500ms cubic-bezier(0.5, -0.5, 0.3, 1.5),
-      color 500ms ease;
+  .x-post:is(
+      [data-state="hover"],
+      [data-state="press"],
+      [data-state="collapsing"]
+    )
+    .lustre-action-block {
+    color: #d06a50;
+    background: rgba(208, 106, 80, 0.14);
   }
 
-  .feed-chisel {
-    background:
-      linear-gradient(var(--color-danger), var(--color-danger)) no-repeat 0 58%
-      / 0 2px;
-    box-decoration-break: clone;
-    transition: background-size 500ms ease 200ms;
+  .x-post[data-state="press"] .lustre-action-block {
+    scale: 0.86;
   }
 
-  .feed-actions {
-    transition: opacity 300ms ease 300ms;
-  }
-
-  .feed-verdict {
-    opacity: 0;
-    transition: opacity 400ms ease 500ms;
-  }
-
-  .feed-card:not([data-state="arriving"]) {
-    & .feed-post {
-      color: var(--color-muted);
-      background: var(--color-canvas);
-    }
-
-    & .feed-thumb {
-      color: var(--color-danger);
-      rotate: 0deg;
-    }
-
-    & .feed-chisel {
-      background-size: 100% 2px;
-    }
-
-    & .feed-actions {
+  @keyframes lustre-toast-in {
+    from {
       opacity: 0;
+      translate: -50% 8px;
     }
+  }
 
-    & .feed-verdict {
-      opacity: 1;
-    }
+  .lustre-toast {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 18px;
+    font:
+      14px / 1.35 -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    color: #f3efe6;
+    white-space: nowrap;
+    background: #1f1c17;
+    border: 1px solid #2e2b24;
+    border-top: 2px solid #c9a46a;
+    border-radius: 3px;
+    box-shadow: 0 8px 24px rgba(20, 19, 15, 0.28);
+    translate: -50% 0;
+    animation: lustre-toast-in 250ms ease-out;
+  }
+
+  .lustre-toast-undo {
+    font-weight: 600;
+    color: #c9a46a;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
   }
 }
 
@@ -111,8 +177,8 @@
     scroll-behavior: auto;
   }
 
-  .feed-card,
-  .feed-card * {
+  .x-post,
+  .x-timeline * {
     transition: none;
     animation: none;
   }

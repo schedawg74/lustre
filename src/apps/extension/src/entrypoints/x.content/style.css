@@ -117,8 +117,9 @@
   max-width: calc(100vw - 32px);
   padding: 12px 18px;
   font: 14px / 1.35 var(--lustre-sans);
-  color: var(--lustre-canvas);
-  background: var(--lustre-text);
+  /* Ink in both modes: it must stand out on light and dark timelines. */
+  color: #f3efe6;
+  background: #1f1c17;
   border: 1px solid #2e2b24;
   border-top: 2px solid #c9a46a;
   border-radius: 3px;

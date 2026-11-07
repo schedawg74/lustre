@@ -114,6 +114,7 @@ const step = async (session: XSession): Promise<number> => {
     return 0;
   }
   await send({
+    attempted: entry,
     outcome: attempt.outcome,
     type: "queue/outcome",
     userId: entry.userId,

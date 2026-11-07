@@ -1,4 +1,4 @@
-import type { AddResult, Outcome } from "@lustre/block-queue/queue";
+import type { AddResult, Outcome, QueueEntry } from "@lustre/block-queue/queue";
 import type { ListInfo, XUser } from "@lustre/x-client/users";
 import { browser } from "wxt/browser";
 import type { RunnerState } from "./storage";
@@ -18,12 +18,21 @@ export type Message =
     }
   | { type: "import/cancel" }
   | { type: "lists/remove"; listId: string }
-  | { type: "queue/outcome"; userId: string; outcome: Outcome }
+  | {
+      type: "queue/outcome";
+      userId: string;
+      outcome: Outcome;
+      /** The entry as the runner saw it (see recordOutcome). */
+      attempted: QueueEntry;
+    }
   | { type: "queue/skip"; userId: string }
   | { type: "queue/retryFailed" }
   | { type: "runner/update"; patch: Partial<RunnerState> };
 
-export type ImportSummary = Omit<AddResult, "queue">;
+export type ImportSummary = Omit<AddResult, "queue"> & {
+  /** The list was removed while its import ran; nothing was added. */
+  cancelled?: boolean;
+};
 
 export type MessageResult<M extends Message> = M extends {
   type: "import/finish";

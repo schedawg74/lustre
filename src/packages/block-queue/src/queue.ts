@@ -140,9 +140,19 @@ export const recordOutcome = (
   queue: BlockQueue,
   userId: string,
   outcome: Outcome,
-  now: number
+  now: number,
+  /**
+   * The entry as the runner saw it. If the entry left the queue while its
+   * block request was in flight (its list was removed), a completed block
+   * is still recorded from this copy, without the removed sources.
+   */
+  attempted?: QueueEntry
 ): BlockQueue => {
-  const entry = queue[userId];
+  const entry =
+    queue[userId] ??
+    (outcome.kind === "blocked" && attempted
+      ? { ...attempted, sources: [] }
+      : undefined);
   if (!entry) {
     return queue;
   }

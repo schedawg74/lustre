@@ -214,3 +214,28 @@ describe("several lists", () => {
     });
   });
 });
+
+describe("removal while a block is in flight", () => {
+  it("records the block from the runner's copy", () => {
+    const queue = queueOf(user("1"));
+    const attempted = queue["1"];
+    const { queue: removed } = removeSource(queue, "list:1");
+    expect(removed["1"]).toBeUndefined();
+    const after = recordOutcome(
+      removed,
+      "1",
+      { kind: "blocked" },
+      5,
+      attempted
+    );
+    expect(after["1"]).toMatchObject({ sources: [], status: "blocked" });
+  });
+
+  it("drops other outcomes of a removed entry", () => {
+    const queue = queueOf(user("1"));
+    const attempted = queue["1"];
+    const { queue: removed } = removeSource(queue, "list:1");
+    const failure = { kind: "failed", reason: "x", retryable: true } as const;
+    expect(recordOutcome(removed, "1", failure, 5, attempted)).toBe(removed);
+  });
+});

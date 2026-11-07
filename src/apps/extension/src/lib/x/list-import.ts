@@ -128,6 +128,11 @@ const runImport = (
       (total, count) => total + count,
       0
     );
+    if (summary.cancelled) {
+      panel.setText("Import stopped: the list was removed.");
+      panel.setButtons([{ label: "Close", run: () => panel.root.remove() }]);
+      return;
+    }
     panel.setText(finishMessage(summary.added, skipped));
     panel.setButtons([
       ...(summary.added > 0

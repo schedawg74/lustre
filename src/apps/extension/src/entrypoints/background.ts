@@ -26,6 +26,15 @@ const handlers = {
   },
 
   "import/finish": async ({ listId, list, users }): Promise<ImportSummary> => {
+    // The list was removed (or the import cancelled) while it collected.
+    if ((await pendingImportItem.getValue())?.listId !== listId) {
+      return {
+        added: 0,
+        cancelled: true,
+        duplicates: 0,
+        skipped: { allowlisted: 0, "already-blocked": 0, "you-follow": 0 },
+      };
+    }
     const settings = await readSettings();
     const { queue, ...summary } = addCandidates(
       await queueItem.getValue(),
@@ -73,6 +82,10 @@ const handlers = {
   },
 
   "lists/remove": async ({ listId }) => {
+    // A running import of this list must not bring it back when it ends.
+    if ((await pendingImportItem.getValue())?.listId === listId) {
+      await pendingImportItem.setValue(null);
+    }
     const { [listId]: _removed, ...lists } = await listsItem.getValue();
     await listsItem.setValue(lists);
     const { queue } = removeSource(
@@ -82,9 +95,15 @@ const handlers = {
     await queueItem.setValue(queue);
   },
 
-  "queue/outcome": async ({ userId, outcome }) => {
+  "queue/outcome": async ({ userId, outcome, attempted }) => {
     await queueItem.setValue(
-      recordOutcome(await queueItem.getValue(), userId, outcome, Date.now())
+      recordOutcome(
+        await queueItem.getValue(),
+        userId,
+        outcome,
+        Date.now(),
+        attempted
+      )
     );
   },
 

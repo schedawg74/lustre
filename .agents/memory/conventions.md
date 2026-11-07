@@ -10,8 +10,9 @@
 ## Injected UI on a site
 
 - Prefix every class name with `lustre-`.
-- Icons: the Meandros style (straight lines, square caps, miter joins). The toolbar icon is drawn in `assets/icon.svg` and `assets/icon-small.svg` (16 and 32 px, edges on the pixel grid) and rendered with `pnpm --filter @lustre/extension icons`. Styles live in `entrypoints/x.content/style.css`.
-- Match the site's look: x.com's grey `rgb(113, 118, 123)` for idle icons, red for block, yellow for mute, blue for not interested.
+- Icons come from `@lustre/icons` (Meandros style: straight lines on a 24-unit grid, square caps, miter joins; a test enforces it). Use `@lustre/icons/react` in React, `@lustre/icons/dom` on x.com (no innerHTML), `@lustre/icons/svg` for static HTML. Each icon carries its Latin or Greek meaning. The toolbar icon is `brand/icon.svg` and `brand/icon-small.svg` (16 and 32 px, edges on the pixel grid), rendered with `pnpm --filter @lustre/extension icons`.
+- Styles live in `entrypoints/x.content/style.css`.
+- Match the site's look: x.com's grey `rgb(113, 118, 123)` for idle icons; on hover terracotta for block, ochre for mute, Aegean blue for not interested.
 - Every button has a `title`, an `aria-label` with the target handle, and a visible focus outline.
 - Stop the click from reaching the post (`preventDefault` and `stopPropagation`): the post is a link.
 - Show results in one toast (`lib/x/toast.ts`). Offer Undo when the site has an inverse call.

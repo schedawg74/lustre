@@ -1,3 +1,5 @@
+import { createIcon } from "@lustre/icons/dom";
+import type { IconName } from "@lustre/icons/icons";
 import {
   XAuthError,
   XRateLimitError,
@@ -8,8 +10,6 @@ import { readSettings, type Settings, watchSettings } from "@/lib/storage";
 import {
   findActionBar,
   hideTweet,
-  ICONS,
-  icon,
   readAuthorHandle,
   readOwnHandle,
   SELECTORS,
@@ -26,23 +26,23 @@ const ACTIONS: {
   action: Action;
   label: string;
   setting: keyof Settings;
-  icon: readonly string[];
+  icon: IconName;
 }[] = [
   {
     action: "block",
-    icon: ICONS.block,
+    icon: "pollice",
     label: "Block",
     setting: "showBlockButton",
   },
   {
     action: "mute",
-    icon: ICONS.mute,
+    icon: "tacita",
     label: "Mute",
     setting: "showMuteButton",
   },
   {
     action: "notInterested",
-    icon: ICONS.notInterested,
+    icon: "aversio",
     label: "Not interested",
     setting: "showNotInterestedButton",
   },
@@ -138,7 +138,7 @@ export const mountInlineActions = async (
       button.className = `lustre-action lustre-action-${entry.action}`;
       button.title = `${entry.label} @${handle}`;
       button.setAttribute("aria-label", `${entry.label} @${handle}`);
-      button.append(icon(entry.icon));
+      button.append(createIcon(entry.icon));
       button.addEventListener("click", async (event) => {
         // The post itself is a link; keep the click on the button.
         event.preventDefault();

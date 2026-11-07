@@ -1,5 +1,5 @@
 /**
- * Renders assets/icon.svg to the PNG sizes the manifest uses.
+ * Renders the brand icon of @lustre/icons to the PNG sizes the manifest uses.
  * Run with `pnpm --filter @lustre/extension icons`.
  */
 import { readFile } from "node:fs/promises";
@@ -10,11 +10,9 @@ const SIZES = [16, 32, 48, 96, 128] as const;
 const root = path.resolve(import.meta.dirname, "..");
 /** 16 and 32 px use a simpler drawing; finer detail merges at that size. */
 const SMALL_UP_TO = 32;
-const svgLarge = await readFile(path.join(root, "assets/icon.svg"), "utf8");
-const svgSmall = await readFile(
-  path.join(root, "assets/icon-small.svg"),
-  "utf8"
-);
+const brand = path.resolve(root, "../../packages/icons/brand");
+const svgLarge = await readFile(path.join(brand, "icon.svg"), "utf8");
+const svgSmall = await readFile(path.join(brand, "icon-small.svg"), "utf8");
 
 const browser = await chromium.launch({ channel: "chromium" });
 try {

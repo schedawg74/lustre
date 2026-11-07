@@ -1,0 +1,119 @@
+/** An X account as the web app's GraphQL responses describe it. */
+export type XUser = {
+  id: string;
+  screenName: string;
+  name: string;
+  /** You follow this account. */
+  following: boolean;
+  /** You already block this account. */
+  blocking: boolean;
+};
+
+type JsonObject = Record<string, unknown>;
+
+const isObject = (value: unknown): value is JsonObject =>
+  typeof value === "object" && value !== null;
+
+const readString = (source: unknown, key: string): string | undefined => {
+  if (!isObject(source)) {
+    return;
+  }
+  const value = source[key];
+  return typeof value === "string" ? value : undefined;
+};
+
+const readBoolean = (source: unknown, key: string): boolean =>
+  isObject(source) && source[key] === true;
+
+/**
+ * Reads one GraphQL `User` result. X moved fields between `legacy`, `core`
+ * and `relationship_perspectives` over time, so each field is read from every
+ * place it has lived.
+ */
+const toUser = (result: JsonObject): XUser | undefined => {
+  const id = readString(result, "rest_id");
+  const { legacy, core } = result;
+  const perspectives = result.relationship_perspectives;
+  const screenName =
+    readString(core, "screen_name") ?? readString(legacy, "screen_name");
+  if (!(id && screenName)) {
+    return;
+  }
+  return {
+    blocking:
+      readBoolean(perspectives, "blocking") || readBoolean(legacy, "blocking"),
+    following:
+      readBoolean(perspectives, "following") ||
+      readBoolean(legacy, "following"),
+    id,
+    name: readString(core, "name") ?? readString(legacy, "name") ?? screenName,
+    screenName,
+  };
+};
+
+/**
+ * Collects every user in a GraphQL response, in document order and without
+ * duplicates. It walks the whole tree instead of following one fixed path, so
+ * it keeps working when X renames or nests the timeline containers.
+ */
+export const extractUsers = (payload: unknown): XUser[] => {
+  const users = new Map<string, XUser>();
+  const stack: unknown[] = [payload];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (Array.isArray(node)) {
+      for (let index = node.length - 1; index >= 0; index -= 1) {
+        stack.push(node[index]);
+      }
+      continue;
+    }
+    if (!isObject(node)) {
+      continue;
+    }
+    if (node.__typename === "User") {
+      const user = toUser(node);
+      if (user && !users.has(user.id)) {
+        users.set(user.id, user);
+      }
+    }
+    const values = Object.values(node);
+    for (let index = values.length - 1; index >= 0; index -= 1) {
+      stack.push(values[index]);
+    }
+  }
+  return [...users.values()];
+};
+
+/** The GraphQL operation name in an X API URL, such as `ListMembers`. */
+export const graphqlOperationName = (url: string): string | undefined => {
+  const match = GRAPHQL_PATH.exec(url);
+  return match?.[1];
+};
+
+const GRAPHQL_PATH = /\/i\/api\/graphql\/[^/]+\/([A-Za-z]+)/;
+
+/** The `variables` query parameter of a GraphQL GET request, parsed. */
+export const graphqlVariables = (
+  url: string
+): Record<string, unknown> | undefined => {
+  try {
+    const raw = new URL(url, "https://x.com").searchParams.get("variables");
+    const parsed: unknown = raw ? JSON.parse(raw) : undefined;
+    return isObject(parsed) ? parsed : undefined;
+  } catch {
+    // Not JSON: no variables.
+  }
+};
+
+const LIST_ID_PATTERNS = [/\/i\/lists\/(\d+)/, /^(\d+)$/];
+
+/** Reads a list id from `https://x.com/i/lists/<id>` or from the bare id. */
+export const parseListId = (input: string): string | undefined => {
+  const trimmed = input.trim();
+  for (const pattern of LIST_ID_PATTERNS) {
+    const match = pattern.exec(trimmed);
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+};

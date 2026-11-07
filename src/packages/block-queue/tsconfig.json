@@ -1,0 +1,7 @@
+{
+  "extends": "@feedwarden/typescript-config/base.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src"]
+}

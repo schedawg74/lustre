@@ -1,0 +1,36 @@
+{
+  "name": "feedwarden",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:firefox": "pnpm --filter @feedwarden/extension dev:firefox",
+    "format": "biome check --write .",
+    "lint": "biome check .",
+    "prepare": "husky",
+    "test": "vitest run",
+    "typecheck": "turbo run typecheck",
+    "zip": "pnpm --filter @feedwarden/extension zip",
+    "zip:firefox": "pnpm --filter @feedwarden/extension zip:firefox"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,cjs,mjs,json,jsonc,css}": "biome check --write --no-errors-on-unmatched"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "catalog:",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "turbo": "2.11.10",
+    "typescript": "catalog:",
+    "ultracite": "8.0.2",
+    "vitest": "catalog:"
+  },
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=22.12",
+    "pnpm": ">=12.15.0 <13"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/vitest"
+  ],
+  "files": {
+    "includes": [
+      "!!**/.output",
+      "!!**/.wxt",
+      "!!**/dist",
+      "!!**/.turbo",
+      "!!pnpm-lock.yaml",
+      "!!bts.jsonc"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space"
+  },
+  "linter": {
+    "rules": {
+      "style": {
+        "noMagicNumbers": "off",
+        "useConsistentTypeDefinitions": {
+          "level": "error",
+          "options": {
+            "style": "type"
+          }
+        },
+        "useNamingConvention": "off",
+        "useFilenamingConvention": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "useTopLevelRegex": "off",
+        "noJsxPropsBind": "off",
+        "noAwaitInLoops": "off"
+      },
+      "suspicious": {
+        "noImportCycles": "error",
+        "noUnnecessaryConditions": "off"
+      }
+    }
+  }
+}

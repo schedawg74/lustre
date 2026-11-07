@@ -1,0 +1,143 @@
+import {
+  addCandidates,
+  recordOutcome,
+  retryFailed,
+  skipEntry,
+  summarize,
+} from "@feedwarden/block-queue/queue";
+import { browser } from "wxt/browser";
+import { defineBackground } from "wxt/utils/define-background";
+import type { ImportSummary, Message } from "@/lib/messages";
+import {
+  listsItem,
+  pendingImportItem,
+  queueItem,
+  readSettings,
+  runnerItem,
+} from "@/lib/storage";
+
+const membersUrl = (listId: string) =>
+  `https://x.com/i/lists/${listId}/members`;
+
+const handlers = {
+  "import/cancel": async () => {
+    await pendingImportItem.setValue(null);
+  },
+
+  "import/finish": async ({ listId, users }): Promise<ImportSummary> => {
+    const settings = await readSettings();
+    const { queue, ...summary } = addCandidates(
+      await queueItem.getValue(),
+      users,
+      {
+        allowlist: settings.allowlist,
+        now: Date.now(),
+        skipFollowing: settings.skipFollowing,
+        source: `list:${listId}`,
+      }
+    );
+    await queueItem.setValue(queue);
+    const lists = await listsItem.getValue();
+    await listsItem.setValue({
+      ...lists,
+      [listId]: {
+        lastImportedAt: Date.now(),
+        listId,
+        memberCount: users.length,
+        url: `https://x.com/i/lists/${listId}`,
+      },
+    });
+    await pendingImportItem.setValue(null);
+    if (settings.autoStartAfterImport && summary.added > 0) {
+      const runner = await runnerItem.getValue();
+      await runnerItem.setValue({ ...runner, status: "running" });
+    }
+    return summary;
+  },
+  "import/start": async ({ listId }) => {
+    await pendingImportItem.setValue({ listId, requestedAt: Date.now() });
+    const lists = await listsItem.getValue();
+    await listsItem.setValue({
+      ...lists,
+      [listId]: {
+        ...lists[listId],
+        listId,
+        url: `https://x.com/i/lists/${listId}`,
+      },
+    });
+    await browser.tabs.create({ url: membersUrl(listId) });
+  },
+
+  "queue/outcome": async ({ userId, outcome }) => {
+    await queueItem.setValue(
+      recordOutcome(await queueItem.getValue(), userId, outcome, Date.now())
+    );
+  },
+
+  "queue/retryFailed": async () => {
+    await queueItem.setValue(
+      retryFailed(await queueItem.getValue(), Date.now())
+    );
+  },
+
+  "queue/skip": async ({ userId }) => {
+    await queueItem.setValue(
+      skipEntry(await queueItem.getValue(), userId, Date.now())
+    );
+  },
+
+  "runner/update": async ({ patch }) => {
+    const runner = await runnerItem.getValue();
+    await runnerItem.setValue({ ...runner, ...patch });
+  },
+} satisfies {
+  [T in Message["type"]]: (
+    message: Extract<Message, { type: T }>
+  ) => Promise<unknown>;
+};
+
+const isMessage = (value: unknown): value is Message =>
+  typeof value === "object" &&
+  value !== null &&
+  "type" in value &&
+  typeof value.type === "string" &&
+  value.type in handlers;
+
+const badgeText = (pending: number) => {
+  if (pending === 0) {
+    return "";
+  }
+  return pending < 1000 ? String(pending) : `${Math.floor(pending / 1000)}k`;
+};
+
+/** Shows how many accounts are still waiting to be blocked. */
+const updateBadge = async () => {
+  const { pending } = summarize(await queueItem.getValue());
+  const runner = await runnerItem.getValue();
+  await browser.action.setBadgeText({
+    text: badgeText(pending),
+  });
+  await browser.action.setBadgeBackgroundColor({
+    color: runner.status === "running" ? "#1d9bf0" : "#71767b",
+  });
+};
+
+export default defineBackground(() => {
+  // One write at a time: each handler reads, changes and saves a whole item.
+  let writes: Promise<unknown> = Promise.resolve();
+
+  browser.runtime.onMessage.addListener((message: unknown) => {
+    if (!isMessage(message)) {
+      return;
+    }
+    const run = () =>
+      (handlers[message.type] as (m: Message) => Promise<unknown>)(message);
+    const result = writes.then(run, run);
+    writes = result.catch(() => undefined);
+    return result;
+  });
+
+  queueItem.watch(updateBadge);
+  runnerItem.watch(updateBadge);
+  updateBadge();
+});

@@ -1,0 +1,219 @@
+import type { XUser } from "@feedwarden/x-client/users";
+
+export type EntryStatus = "pending" | "blocked" | "skipped" | "failed";
+
+export type SkipReason = "allowlisted" | "already-blocked" | "you-follow";
+
+export type QueueEntry = {
+  userId: string;
+  screenName: string;
+  name: string;
+  /** Where the account came from, such as `list:2116659176894071283`. */
+  source: string;
+  status: EntryStatus;
+  /** Why it was skipped or why the last attempt failed. */
+  reason?: string;
+  attempts: number;
+  addedAt: number;
+  updatedAt: number;
+};
+
+/** Accounts to block, keyed by user id. */
+export type BlockQueue = Record<string, QueueEntry>;
+
+export type AddOptions = {
+  source: string;
+  /** Handles that are never blocked. Compared case-insensitively, `@` ignored. */
+  allowlist: readonly string[];
+  skipFollowing: boolean;
+  now: number;
+};
+
+export type AddResult = {
+  queue: BlockQueue;
+  added: number;
+  skipped: Record<SkipReason, number>;
+  duplicates: number;
+};
+
+export const normalizeHandle = (handle: string): string =>
+  handle.trim().replace(/^@/, "").toLowerCase();
+
+const skipReasonFor = (
+  user: XUser,
+  allowlist: ReadonlySet<string>,
+  skipFollowing: boolean
+): SkipReason | undefined => {
+  if (allowlist.has(normalizeHandle(user.screenName))) {
+    return "allowlisted";
+  }
+  if (user.blocking) {
+    return "already-blocked";
+  }
+  if (skipFollowing && user.following) {
+    return "you-follow";
+  }
+};
+
+/**
+ * Adds accounts to the queue. An account already in the queue keeps its
+ * entry, so importing a list again only adds its new members.
+ */
+export const addCandidates = (
+  queue: BlockQueue,
+  users: readonly XUser[],
+  options: AddOptions
+): AddResult => {
+  const allowlist = new Set(options.allowlist.map(normalizeHandle));
+  const next: BlockQueue = { ...queue };
+  const skipped: Record<SkipReason, number> = {
+    allowlisted: 0,
+    "already-blocked": 0,
+    "you-follow": 0,
+  };
+  let added = 0;
+  let duplicates = 0;
+  for (const user of users) {
+    if (next[user.id]) {
+      duplicates += 1;
+      continue;
+    }
+    const reason = skipReasonFor(user, allowlist, options.skipFollowing);
+    next[user.id] = {
+      name: user.name,
+      screenName: user.screenName,
+      source: options.source,
+      status: reason ? "skipped" : "pending",
+      userId: user.id,
+      ...(reason ? { reason } : {}),
+      addedAt: options.now,
+      attempts: 0,
+      updatedAt: options.now,
+    };
+    if (reason) {
+      skipped[reason] += 1;
+    } else {
+      added += 1;
+    }
+  }
+  return { added, duplicates, queue: next, skipped };
+};
+
+/** The oldest pending entry, so accounts are blocked in import order. */
+export const nextPending = (queue: BlockQueue): QueueEntry | undefined => {
+  let oldest: QueueEntry | undefined;
+  for (const entry of Object.values(queue)) {
+    if (
+      entry.status === "pending" &&
+      (!oldest || entry.addedAt < oldest.addedAt)
+    ) {
+      oldest = entry;
+    }
+  }
+  return oldest;
+};
+
+export const MAX_ATTEMPTS = 3;
+
+export type Outcome =
+  | { kind: "blocked" }
+  | { kind: "skipped"; reason: string }
+  | { kind: "failed"; reason: string; retryable: boolean };
+
+/**
+ * Records the result of one block attempt. A retryable failure stays pending
+ * until it has failed {@link MAX_ATTEMPTS} times.
+ */
+export const recordOutcome = (
+  queue: BlockQueue,
+  userId: string,
+  outcome: Outcome,
+  now: number
+): BlockQueue => {
+  const entry = queue[userId];
+  if (!entry) {
+    return queue;
+  }
+  const attempts = entry.attempts + 1;
+  let updated: QueueEntry;
+  if (outcome.kind === "blocked") {
+    const { reason: _previousReason, ...rest } = entry;
+    updated = { ...rest, attempts, status: "blocked", updatedAt: now };
+  } else if (outcome.kind === "skipped") {
+    updated = {
+      ...entry,
+      attempts,
+      reason: outcome.reason,
+      status: "skipped",
+      updatedAt: now,
+    };
+  } else {
+    const giveUp = !outcome.retryable || attempts >= MAX_ATTEMPTS;
+    updated = {
+      ...entry,
+      attempts,
+      reason: outcome.reason,
+      status: giveUp ? "failed" : "pending",
+      updatedAt: now,
+    };
+  }
+  return { ...queue, [userId]: updated };
+};
+
+/** Skips one entry by hand, for example from the popup's review list. */
+export const skipEntry = (
+  queue: BlockQueue,
+  userId: string,
+  now: number
+): BlockQueue => {
+  const entry = queue[userId];
+  if (entry?.status !== "pending") {
+    return queue;
+  }
+  return {
+    ...queue,
+    [userId]: {
+      ...entry,
+      reason: "skipped-by-you",
+      status: "skipped",
+      updatedAt: now,
+    },
+  };
+};
+
+export const retryFailed = (queue: BlockQueue, now: number): BlockQueue => {
+  const next: BlockQueue = {};
+  for (const [id, entry] of Object.entries(queue)) {
+    next[id] =
+      entry.status === "failed"
+        ? { ...entry, attempts: 0, status: "pending", updatedAt: now }
+        : entry;
+  }
+  return next;
+};
+
+export type QueueSummary = Record<EntryStatus, number> & { total: number };
+
+export const summarize = (queue: BlockQueue): QueueSummary => {
+  const summary: QueueSummary = {
+    blocked: 0,
+    failed: 0,
+    pending: 0,
+    skipped: 0,
+    total: 0,
+  };
+  for (const entry of Object.values(queue)) {
+    summary[entry.status] += 1;
+    summary.total += 1;
+  }
+  return summary;
+};
+
+/**
+ * Waits `baseMs` give or take half of it, so requests do not arrive on a
+ * fixed beat. `random` is injectable for tests.
+ */
+export const jitteredDelay = (
+  baseMs: number,
+  random: () => number = Math.random
+): number => Math.round(baseMs * (0.5 + random()));

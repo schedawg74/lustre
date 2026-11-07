@@ -1,0 +1,156 @@
+import { describe, expect, it } from "vitest";
+import {
+  extractUsers,
+  graphqlOperationName,
+  graphqlVariables,
+  parseListId,
+} from "./users";
+
+const userResult = (
+  id: string,
+  handle: string,
+  extra: Record<string, unknown> = {}
+) => ({
+  __typename: "User",
+  core: { name: `${handle} name`, screen_name: handle },
+  legacy: {},
+  rest_id: id,
+  ...extra,
+});
+
+/** Trimmed from a real ListMembers response. */
+const listMembersPage = {
+  data: {
+    list: {
+      members_timeline: {
+        timeline: {
+          instructions: [
+            { type: "TimelineClearCache" },
+            {
+              entries: [
+                {
+                  content: {
+                    entryType: "TimelineTimelineItem",
+                    itemContent: {
+                      itemType: "TimelineUser",
+                      user_results: {
+                        result: userResult("1", "slopper", {
+                          relationship_perspectives: { following: true },
+                        }),
+                      },
+                    },
+                  },
+                  entryId: "user-1",
+                },
+                {
+                  content: {
+                    entryType: "TimelineTimelineItem",
+                    itemContent: {
+                      itemType: "TimelineUser",
+                      user_results: {
+                        result: {
+                          __typename: "User",
+                          legacy: {
+                            blocking: true,
+                            name: "Legacy",
+                            screen_name: "legacyshape",
+                          },
+                          rest_id: "2",
+                        },
+                      },
+                    },
+                  },
+                  entryId: "user-2",
+                },
+                {
+                  content: { cursorType: "Bottom", value: "abc" },
+                  entryId: "cursor-bottom-1",
+                },
+              ],
+              type: "TimelineAddEntries",
+            },
+          ],
+        },
+      },
+    },
+  },
+};
+
+describe("extractUsers", () => {
+  it("reads users from both the current and the legacy field layout", () => {
+    expect(extractUsers(listMembersPage)).toEqual([
+      {
+        blocking: false,
+        following: true,
+        id: "1",
+        name: "slopper name",
+        screenName: "slopper",
+      },
+      {
+        blocking: true,
+        following: false,
+        id: "2",
+        name: "Legacy",
+        screenName: "legacyshape",
+      },
+    ]);
+  });
+
+  it("drops duplicates and results without a handle", () => {
+    const payload = [
+      userResult("1", "a"),
+      { nested: userResult("1", "a") },
+      { __typename: "User", rest_id: "3" },
+      { __typename: "UserUnavailable", rest_id: "4" },
+    ];
+    expect(extractUsers(payload).map((user) => user.id)).toEqual(["1"]);
+  });
+
+  it("returns nothing for non-objects", () => {
+    expect(extractUsers(null)).toEqual([]);
+    expect(extractUsers("text")).toEqual([]);
+  });
+});
+
+describe("graphqlOperationName", () => {
+  it("reads the operation from an API URL", () => {
+    expect(
+      graphqlOperationName(
+        "https://x.com/i/api/graphql/AbC-12_x/ListMembers?variables=%7B%7D"
+      )
+    ).toBe("ListMembers");
+    expect(graphqlOperationName("https://x.com/home")).toBeUndefined();
+  });
+});
+
+describe("graphqlVariables", () => {
+  it("parses the variables parameter", () => {
+    const variables = encodeURIComponent(
+      JSON.stringify({ count: 20, listId: "123" })
+    );
+    expect(
+      graphqlVariables(
+        `https://x.com/i/api/graphql/abc/ListMembers?variables=${variables}`
+      )
+    ).toEqual({ count: 20, listId: "123" });
+    expect(
+      graphqlVariables("https://x.com/i/api/graphql/abc/X")
+    ).toBeUndefined();
+    expect(
+      graphqlVariables("https://x.com/i/api/graphql/abc/X?variables=%7Bbad")
+    ).toBeUndefined();
+  });
+});
+
+describe("parseListId", () => {
+  it("accepts list URLs and bare ids", () => {
+    expect(parseListId("https://x.com/i/lists/2116659176894071283")).toBe(
+      "2116659176894071283"
+    );
+    expect(
+      parseListId("https://twitter.com/i/lists/2116659176894071283/members")
+    ).toBe("2116659176894071283");
+    expect(parseListId(" 2116659176894071283 ")).toBe("2116659176894071283");
+    expect(parseListId("https://x.com/someone")).toBeUndefined();
+  });
+});

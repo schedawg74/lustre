@@ -1,12 +1,12 @@
 /* Buttons under each post, styled like x.com's own action bar. */
-.fw-actions {
+.lustre-actions {
   display: inline-flex;
   gap: 2px;
   align-items: center;
   margin-left: 4px;
 }
 
-.fw-action {
+.lustre-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -23,7 +23,7 @@
     color 0.15s;
 }
 
-.fw-action svg {
+.lustre-action svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -33,45 +33,45 @@
   stroke-linejoin: round;
 }
 
-.fw-action:disabled {
+.lustre-action:disabled {
   cursor: progress;
   opacity: 0.5;
 }
 
-.fw-action-block:hover,
-.fw-action-block:focus-visible {
+.lustre-action-block:hover,
+.lustre-action-block:focus-visible {
   color: rgb(244, 33, 46);
   background: rgba(244, 33, 46, 0.1);
 }
 
-.fw-action-mute:hover,
-.fw-action-mute:focus-visible {
+.lustre-action-mute:hover,
+.lustre-action-mute:focus-visible {
   color: rgb(255, 173, 31);
   background: rgba(255, 173, 31, 0.12);
 }
 
-.fw-action-notInterested:hover,
-.fw-action-notInterested:focus-visible {
+.lustre-action-notInterested:hover,
+.lustre-action-notInterested:focus-visible {
   color: rgb(29, 155, 240);
   background: rgba(29, 155, 240, 0.1);
 }
 
-.fw-action:focus-visible {
+.lustre-action:focus-visible {
   outline: 2px solid rgb(29, 155, 240);
   outline-offset: 1px;
 }
 
-.fw-hidden {
+.lustre-hidden {
   display: none !important;
 }
 
-/* Keeps x.com's "⋯" menu invisible while Feedwarden clicks an entry in it. */
-.fw-silent-menu [role="menu"],
-.fw-silent-menu [data-testid="sheetDialog"] {
+/* Keeps x.com's "⋯" menu invisible while Lustre clicks an entry in it. */
+.lustre-silent-menu [role="menu"],
+.lustre-silent-menu [data-testid="sheetDialog"] {
   opacity: 0 !important;
 }
 
-.fw-toast {
+.lustre-toast {
   position: fixed;
   bottom: 24px;
   left: 50%;
@@ -94,11 +94,11 @@
   transform: translateX(-50%);
 }
 
-.fw-toast-error {
+.lustre-toast-error {
   background: rgb(244, 33, 46);
 }
 
-.fw-toast button {
+.lustre-toast button {
   padding: 0;
   font: inherit;
   font-weight: 700;
@@ -109,7 +109,7 @@
   border: 0;
 }
 
-.fw-panel {
+.lustre-panel {
   position: fixed;
   right: 24px;
   bottom: 24px;
@@ -129,18 +129,18 @@
   box-shadow: 0 8px 28px rgba(255, 255, 255, 0.12);
 }
 
-.fw-panel p {
+.lustre-panel p {
   margin: 8px 0 12px;
   color: rgb(139, 152, 165);
 }
 
-.fw-panel-buttons {
+.lustre-panel-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.fw-panel button {
+.lustre-panel button {
   padding: 6px 16px;
   font: inherit;
   font-weight: 700;
@@ -151,7 +151,7 @@
   border-radius: 9999px;
 }
 
-.fw-panel button.fw-primary {
+.lustre-panel button.lustre-primary {
   color: rgb(15, 20, 25);
   background: rgb(239, 243, 244);
   border-color: rgb(239, 243, 244);

@@ -1,11 +1,11 @@
-# Feedwarden
+# Lustre
 
 Personal feed control for X and YouTube, as a browser extension.
 
 What works today (X):
 
 - **Bulk-block an X list.** Paste a list link (the default is the
-  [AI slop list](https://x.com/i/lists/2116659176894071283)). Feedwarden opens
+  [AI slop list](https://x.com/i/lists/2116659176894071283)). Lustre opens
   the list's members page, scrolls through it, and adds every member to a block
   queue. You review the queue, then press **Start blocking**. Accounts you
   follow, accounts you already block, and handles on your allowlist are
@@ -38,7 +38,7 @@ For development with hot reload: `pnpm dev` (Chrome) or `pnpm dev:firefox`.
 ## Use
 
 1. Log in to x.com in the same browser.
-2. Click the Feedwarden icon → **Block lists** → **Import**. A tab opens on
+2. Click the Lustre icon → **Block lists** → **Import**. A tab opens on
    the list and collects the members; a panel in the corner shows progress.
 3. Review the queue in the popup (**Review pending accounts**; **Skip** removes
    one), then press **Start blocking**.
@@ -58,13 +58,13 @@ Re-importing a list later only queues its new members.
   (`/i/api/1.1/blocks/create.json`, `/i/api/1.1/mutes/users/create.json`) from
   the x.com tab, so they use your logged-in session. No password or token
   leaves your browser, and there is no server.
-- If x.com rejects an API call from a post button, Feedwarden falls back to
+- If x.com rejects an API call from a post button, Lustre falls back to
   clicking the same entry in the post's "⋯" menu.
 - The block queue runs in one x.com tab at a time (a Web Lock). If that tab
   closes, another open x.com tab takes over.
 
 Details and the parts most likely to break when x.com changes:
-[docs/x-internals.md](docs/x-internals.md).
+[.agents/memory/x-platform.md](.agents/memory/x-platform.md).
 
 ## Repository layout
 
@@ -80,7 +80,8 @@ src/
     block-queue/      Block queue logic (no browser APIs, unit-tested)
   tooling/
     typescript/       Shared tsconfig
-docs/                 Plans and notes
+docs/plans/           Planned work
+.agents/memory/       Architecture and decisions, for people and coding agents
 ```
 
 ## Scripts
@@ -91,6 +92,7 @@ docs/                 Plans and notes
 | `pnpm build` | Production builds for Chrome (MV3) and Firefox (MV3) |
 | `pnpm zip` / `pnpm zip:firefox` | Store-ready zip files |
 | `pnpm test` | Vitest unit tests |
+| `pnpm test:e2e` | Chromium smoke test of the built extension against a fake x.com |
 | `pnpm typecheck` | TypeScript in every workspace |
 | `pnpm lint` / `pnpm format` | Biome (Ultracite preset) |
 

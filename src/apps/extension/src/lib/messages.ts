@@ -1,5 +1,5 @@
-import type { AddResult, Outcome } from "@feedwarden/block-queue/queue";
-import type { XUser } from "@feedwarden/x-client/users";
+import type { AddResult, Outcome } from "@lustre/block-queue/queue";
+import type { XUser } from "@lustre/x-client/users";
 import { browser } from "wxt/browser";
 import type { RunnerState } from "./storage";
 

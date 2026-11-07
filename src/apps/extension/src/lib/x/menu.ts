@@ -19,7 +19,7 @@ export class MenuEntryMissingError extends Error {
   }
 }
 
-const SILENT_CLASS = "fw-silent-menu";
+const SILENT_CLASS = "lustre-silent-menu";
 
 /**
  * "Mute @user" and "Mute this conversation" both match the mute pattern, so

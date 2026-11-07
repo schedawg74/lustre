@@ -20,7 +20,7 @@ export const showToast = (
 ) => {
   dismiss();
   const element = document.createElement("div");
-  element.className = `fw-toast fw-toast-${options.tone ?? "info"}`;
+  element.className = `lustre-toast lustre-toast-${options.tone ?? "info"}`;
   element.setAttribute("role", "status");
   const label = document.createElement("span");
   label.textContent = text;

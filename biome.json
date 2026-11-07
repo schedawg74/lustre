@@ -42,5 +42,17 @@
         "noUnnecessaryConditions": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/apps/extension/e2e/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noMisplacedAssertion": "off"
+          }
+        }
+      }
+    }
+  ]
 }

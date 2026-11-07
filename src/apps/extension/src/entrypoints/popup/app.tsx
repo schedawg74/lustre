@@ -1,5 +1,5 @@
-import { normalizeHandle, summarize } from "@feedwarden/block-queue/queue";
-import { parseListId } from "@feedwarden/x-client/users";
+import { normalizeHandle, summarize } from "@lustre/block-queue/queue";
+import { parseListId } from "@lustre/x-client/users";
 import { type FormEvent, useId, useMemo, useState } from "react";
 import { send } from "@/lib/messages";
 import {
@@ -389,7 +389,7 @@ const SafetySection = () => {
 
 export const App = () => (
   <main>
-    <h1>Feedwarden</h1>
+    <h1>Lustre</h1>
     <QueueSection />
     <ListsSection />
     <ButtonsSection />

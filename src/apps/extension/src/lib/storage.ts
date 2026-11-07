@@ -1,4 +1,4 @@
-import type { BlockQueue } from "@feedwarden/block-queue/queue";
+import type { BlockQueue } from "@lustre/block-queue/queue";
 import { storage } from "wxt/utils/storage";
 
 /** The list that started this project: accounts that post AI slop. */

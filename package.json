@@ -1,19 +1,20 @@
 {
-  "name": "feedwarden",
+  "name": "lustre",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:firefox": "pnpm --filter @feedwarden/extension dev:firefox",
+    "dev:firefox": "pnpm --filter @lustre/extension dev:firefox",
     "format": "biome check --write .",
     "lint": "biome check .",
     "prepare": "husky",
     "test": "vitest run",
+    "test:e2e": "pnpm --filter @lustre/extension test:e2e",
     "typecheck": "turbo run typecheck",
-    "zip": "pnpm --filter @feedwarden/extension zip",
-    "zip:firefox": "pnpm --filter @feedwarden/extension zip:firefox"
+    "zip": "pnpm --filter @lustre/extension zip",
+    "zip:firefox": "pnpm --filter @lustre/extension zip:firefox"
   },
   "lint-staged": {
     "*.{ts,tsx,js,cjs,mjs,json,jsonc,css}": "biome check --write --no-errors-on-unmatched"
@@ -30,7 +31,14 @@
   },
   "packageManager": "pnpm@12.15.0",
   "engines": {
-    "node": ">=22.12",
+    "node": ">=24.22.2 <25",
     "pnpm": ">=12.15.0 <13"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.22.2",
+      "onFail": "download"
+    }
   }
 }

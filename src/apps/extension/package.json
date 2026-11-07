@@ -1,5 +1,5 @@
 {
-  "name": "@feedwarden/extension",
+  "name": "@lustre/extension",
   "version": "0.1.0",
   "private": true,
   "description": "Personal feed control for X: bulk-block lists, one-click block, mute and not interested.",
@@ -9,13 +9,14 @@
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox --mv3",
     "postinstall": "wxt prepare",
+    "test:e2e": "node e2e/smoke.ts",
     "typecheck": "wxt prepare && tsc --noEmit",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox --mv3"
   },
   "dependencies": {
-    "@feedwarden/block-queue": "workspace:*",
-    "@feedwarden/x-client": "workspace:*",
+    "@lustre/block-queue": "workspace:*",
+    "@lustre/x-client": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -23,6 +24,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@wxt-dev/module-react": "1.2.2",
+    "playwright": "1.64.1",
     "typescript": "catalog:",
     "wxt": "0.21.5"
   }

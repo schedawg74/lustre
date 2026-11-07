@@ -1,6 +1,6 @@
-# X internals Feedwarden depends on
+# X platform
 
-x.com has no public API for personal moderation that fits this use. Feedwarden
+x.com has no public API for personal moderation that fits this use. Lustre
 uses the web app's own private endpoints and DOM. This file lists every such
 dependency, so a breakage can be traced quickly.
 
@@ -12,7 +12,7 @@ dependency, so a breakage can be traced quickly.
 | Unblock (Undo) | `POST /i/api/1.1/blocks/destroy.json` | |
 | Mute | `POST /i/api/1.1/mutes/users/create.json` | |
 | Unmute (Undo) | `POST /i/api/1.1/mutes/users/destroy.json` | |
-| List members | `GET /i/api/graphql/<queryId>/ListMembers` | Read only, never called by Feedwarden itself (see below) |
+| List members | `GET /i/api/graphql/<queryId>/ListMembers` | Read only, never called by Lustre itself (see below) |
 
 Request headers (`src/packages/x-client/src/client.ts`):
 
@@ -24,7 +24,7 @@ Request headers (`src/packages/x-client/src/client.ts`):
 
 Errors are mapped in `toError`:
 
-| Response | Feedwarden does |
+| Response | Lustre does |
 | --- | --- |
 | 429 or error code 88 | Waits until `x-rate-limit-reset` (+5 s); 15 min when the header is missing |
 | Error codes 17, 34, 50, 63, or 404 | Marks the account "skipped: unavailable" |

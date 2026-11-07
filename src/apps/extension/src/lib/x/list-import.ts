@@ -1,4 +1,4 @@
-import { parseListId, type XUser } from "@feedwarden/x-client/users";
+import { parseListId, type XUser } from "@lustre/x-client/users";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
 import { send } from "@/lib/messages";
 import { pendingImportItem } from "@/lib/storage";
@@ -23,13 +23,13 @@ type Panel = {
 
 const createPanel = (): Panel => {
   const root = document.createElement("div");
-  root.className = "fw-panel";
+  root.className = "lustre-panel";
   root.setAttribute("role", "status");
   const title = document.createElement("strong");
-  title.textContent = "Feedwarden";
+  title.textContent = "Lustre";
   const text = document.createElement("p");
   const buttons = document.createElement("div");
-  buttons.className = "fw-panel-buttons";
+  buttons.className = "lustre-panel-buttons";
   root.append(title, text, buttons);
   document.body.append(root);
   return {
@@ -41,7 +41,7 @@ const createPanel = (): Panel => {
           button.type = "button";
           button.textContent = item.label;
           if (item.primary) {
-            button.className = "fw-primary";
+            button.className = "lustre-primary";
           }
           button.addEventListener("click", item.run);
           return button;

@@ -2,7 +2,7 @@
  * Messages from the page-world bridge (x-bridge.content.ts) to the isolated
  * content script, sent with window.postMessage.
  */
-export const BRIDGE_SOURCE = "feedwarden-bridge";
+export const BRIDGE_SOURCE = "lustre-bridge";
 
 /** GraphQL operations whose responses the bridge forwards. */
 export const FORWARDED_OPERATIONS = new Set(["ListMembers"]);

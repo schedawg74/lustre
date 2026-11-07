@@ -1,9 +1,9 @@
-import { createXClient, type XClient } from "@feedwarden/x-client/client";
+import { createXClient, type XClient } from "@lustre/x-client/client";
 import {
   extractUsers,
   graphqlVariables,
   type XUser,
-} from "@feedwarden/x-client/users";
+} from "@lustre/x-client/users";
 import { isBridgeMessage } from "./bridge-protocol";
 
 const readCookie = (name: string): string | undefined => {

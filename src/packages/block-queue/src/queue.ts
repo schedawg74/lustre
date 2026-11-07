@@ -1,4 +1,4 @@
-import type { XUser } from "@feedwarden/x-client/users";
+import type { XUser } from "@lustre/x-client/users";
 
 export type EntryStatus = "pending" | "blocked" | "skipped" | "failed";
 

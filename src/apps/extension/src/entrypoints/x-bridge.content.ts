@@ -1,4 +1,4 @@
-import { graphqlOperationName } from "@feedwarden/x-client/users";
+import { graphqlOperationName } from "@lustre/x-client/users";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import {
   BRIDGE_SOURCE,

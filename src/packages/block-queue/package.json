@@ -1,5 +1,5 @@
 {
-  "name": "@feedwarden/block-queue",
+  "name": "@lustre/block-queue",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,10 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@feedwarden/x-client": "workspace:*"
+    "@lustre/x-client": "workspace:*"
   },
   "devDependencies": {
-    "@feedwarden/typescript-config": "workspace:*",
+    "@lustre/typescript-config": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

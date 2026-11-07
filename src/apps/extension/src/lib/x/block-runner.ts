@@ -2,13 +2,13 @@ import {
   jitteredDelay,
   nextPending,
   type Outcome,
-} from "@feedwarden/block-queue/queue";
+} from "@lustre/block-queue/queue";
 import {
   XAuthError,
   XRateLimitError,
   XRequestError,
   XTargetUnavailableError,
-} from "@feedwarden/x-client/client";
+} from "@lustre/x-client/client";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
 import { send } from "@/lib/messages";
 import {
@@ -19,7 +19,7 @@ import {
 } from "@/lib/storage";
 import type { XSession } from "./session";
 
-const LOCK_NAME = "feedwarden-block-runner";
+const LOCK_NAME = "lustre-block-runner";
 const HEARTBEAT_MS = 5000;
 /** The longest single wait, so a reloaded extension frees the lock soon. */
 const MAX_WAIT_MS = 30_000;

@@ -1,0 +1,120 @@
+/*
+ * Lustre theme for Tailwind CSS 4: modern Greek architecture.
+ * Marble and travertine surfaces, ink text, gilded bronze accent, and the
+ * pigments of painted temples (terracotta, ochre, Aegean blue, olive) as
+ * signal colors. Dark mode is basalt with marble text.
+ *
+ * Use the semantic colors (bg-canvas, text-ink, border-line, bg-accent, ...)
+ * in components. The palette scales exist for illustrations and icons.
+ */
+@import "@fontsource-variable/cinzel";
+@import "@fontsource-variable/jost";
+
+@theme {
+  --font-display: "Cinzel Variable", "Trajan Pro", Georgia, serif;
+  --font-sans:
+    "Jost Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+
+  --color-marble-50: #faf8f3;
+  --color-marble-100: #f3efe6;
+  --color-marble-200: #e7e1d4;
+  --color-marble-300: #d6cebd;
+  --color-stone-400: #b3aa98;
+  --color-stone-500: #8a8275;
+  --color-stone-550: #7a7264;
+  --color-stone-600: #6b6458;
+  --color-basalt-700: #2e2b24;
+  --color-basalt-800: #1e1c17;
+  --color-basalt-900: #14130f;
+  --color-ink: #1f1c17;
+  --color-bronze-300: #d8bd8c;
+  --color-bronze-400: #c9a46a;
+  --color-bronze-500: #a9824a;
+  --color-bronze-600: #8c6a39;
+  --color-terracotta-400: #d06a50;
+  --color-terracotta-600: #b4533a;
+  --color-ochre-400: #d9b25a;
+  --color-ochre-600: #86651f;
+  --color-aegean-400: #6f9cc9;
+  --color-aegean-600: #2f5d8a;
+  --color-olive-400: #9ca36a;
+  --color-olive-600: #6e7346;
+
+  --radius-stone: 3px;
+  --tracking-inscription: 0.22em;
+}
+
+@theme inline {
+  --color-canvas: var(--lustre-canvas);
+  --color-surface: var(--lustre-surface);
+  --color-line: var(--lustre-line);
+  /* Edges of fields and controls: at least 3:1 against the canvas. */
+  --color-control: var(--lustre-control);
+  --color-text: var(--lustre-text);
+  --color-muted: var(--lustre-muted);
+  --color-accent: var(--lustre-accent);
+  --color-on-accent: var(--lustre-on-accent);
+  --color-danger: var(--lustre-danger);
+  --color-warn: var(--lustre-warn);
+  --color-info: var(--lustre-info);
+  --color-success: var(--lustre-success);
+}
+
+:root {
+  --lustre-canvas: var(--color-marble-50);
+  --lustre-surface: var(--color-marble-100);
+  --lustre-line: var(--color-marble-200);
+  --lustre-control: var(--color-stone-500);
+  --lustre-text: var(--color-ink);
+  --lustre-muted: var(--color-stone-600);
+  --lustre-accent: var(--color-bronze-600);
+  --lustre-on-accent: var(--color-marble-50);
+  --lustre-danger: var(--color-terracotta-600);
+  --lustre-warn: var(--color-ochre-600);
+  --lustre-info: var(--color-aegean-600);
+  --lustre-success: var(--color-olive-600);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lustre-canvas: var(--color-basalt-900);
+    --lustre-surface: var(--color-basalt-800);
+    --lustre-line: var(--color-basalt-700);
+    --lustre-control: var(--color-stone-550);
+    --lustre-text: var(--color-marble-100);
+    --lustre-muted: var(--color-stone-400);
+    --lustre-accent: var(--color-bronze-400);
+    --lustre-on-accent: var(--color-basalt-900);
+    --lustre-danger: var(--color-terracotta-400);
+    --lustre-warn: var(--color-ochre-400);
+    --lustre-info: var(--color-aegean-400);
+    --lustre-success: var(--color-olive-400);
+  }
+}
+
+/* A running meander (Greek key) band in the current text color. */
+@utility meander {
+  height: 8px;
+  background-color: currentColor;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M0 9.4H9.4V.6H2.6V6.6H6.6V3.4' fill='none' stroke='black' stroke-width='1.2'/%3E%3Cpath d='M9.4 9.4H10' stroke='black' stroke-width='1.2'/%3E%3C/svg%3E")
+    left / 8px 8px repeat-x;
+}
+
+/* Vertical column flutes, faint, in the current text color. */
+@utility fluted {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 9px,
+    color-mix(in srgb, currentColor 7%, transparent) 9px 10px
+  );
+}
+
+/* Carved-inscription caption: small, uppercase, widely spaced. */
+@utility inscription {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-inscription);
+}

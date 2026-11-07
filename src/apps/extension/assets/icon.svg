@@ -1,0 +1,12 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <title>Lustre: Meandros</title>
+  <rect fill="#14130f" height="128" rx="14" width="128" />
+  <path
+    d="M30 26V102H98V54H54V78H66"
+    fill="none"
+    stroke="#f3efe6"
+    stroke-linecap="square"
+    stroke-width="12"
+  />
+  <rect fill="#c9a46a" height="12" width="12" x="72" y="72" />
+</svg>

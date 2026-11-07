@@ -2,7 +2,7 @@ import {
   XAuthError,
   XRateLimitError,
   XRequestError,
-} from "@feedwarden/x-client/client";
+} from "@lustre/x-client/client";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
 import { readSettings, type Settings, watchSettings } from "@/lib/storage";
 import {
@@ -18,7 +18,7 @@ import { clickMenuEntry, MenuEntryMissingError } from "./menu";
 import type { XSession } from "./session";
 import { showToast } from "./toast";
 
-const TOOLBAR_CLASS = "fw-actions";
+const TOOLBAR_CLASS = "lustre-actions";
 
 type Action = "block" | "mute" | "notInterested";
 
@@ -87,7 +87,7 @@ export const mountInlineActions = async (
       if (action === "notInterested") {
         await clickMenuEntry(article, "notInterested");
         hide();
-        showToast(`Marked as not interested: post by @${handle}`);
+        showToast(`Not interested: @${handle}`);
         return;
       }
       const api = action === "block" ? client.block : client.mute;
@@ -120,7 +120,7 @@ export const mountInlineActions = async (
     } catch (error) {
       const message =
         error instanceof MenuEntryMissingError && action === "notInterested"
-          ? "X offers “Not interested” only on the For you timeline."
+          ? "Not interested works only on the For you timeline."
           : describeError(error);
       showToast(message, { tone: "error" });
     }
@@ -135,7 +135,7 @@ export const mountInlineActions = async (
       }
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `fw-action fw-action-${entry.action}`;
+      button.className = `lustre-action lustre-action-${entry.action}`;
       button.title = `${entry.label} @${handle}`;
       button.setAttribute("aria-label", `${entry.label} @${handle}`);
       button.append(icon(entry.icon));

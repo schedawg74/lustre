@@ -4,7 +4,7 @@ import {
   retryFailed,
   skipEntry,
   summarize,
-} from "@feedwarden/block-queue/queue";
+} from "@lustre/block-queue/queue";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import type { ImportSummary, Message } from "@/lib/messages";

@@ -67,7 +67,7 @@ export const findActionBar = (article: Element): Element | undefined => {
   }
 };
 
-const HIDDEN_CLASS = "fw-hidden";
+const HIDDEN_CLASS = "lustre-hidden";
 
 /** Hides the timeline cell of a post. Returns a function that shows it again. */
 export const hideTweet = (article: Element): (() => void) => {

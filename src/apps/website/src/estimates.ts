@@ -1,6 +1,6 @@
 /**
- * Assumptions behind the estimated counters. The page states them in a
- * footnote; change them here only.
+ * Assumptions behind the counters for hidden posts and saved time. The page
+ * does not show them; change them here only.
  */
 
 /** Posts and replies of one blocked account that one feed shows per week. */

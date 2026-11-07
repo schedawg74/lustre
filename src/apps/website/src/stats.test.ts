@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { maskHandle, SAMPLE_STATS } from "./stats";
+import { displayHandle, SAMPLE_STATS } from "./stats";
 
 const loadWithApi = async (
   answer: () => Promise<Response>
@@ -15,19 +15,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("maskHandle", () => {
-  it("keeps the first and last three characters", () => {
-    expect(maskHandle("@slopmaster")).toBe("@slo•••ter");
+describe("displayHandle", () => {
+  it("adds @ to a masked handle", () => {
+    expect(displayHandle("slo•••bot")).toBe("@slo•••bot");
+    expect(displayHandle("@slo•••bot")).toBe("@slo•••bot");
   });
 
-  it("shows less of a short handle", () => {
-    expect(maskHandle("@slopguru")).toBe("@sl•••ru");
-    expect(maskHandle("@abcdefg")).toBe("@ab•••fg");
-    expect(maskHandle("@ab")).toBe("@•••");
-  });
-
-  it("passes a masked handle through", () => {
-    expect(maskHandle("@abc•••xyz")).toBe("@abc•••xyz");
+  it("masks an unmasked handle like the server", () => {
+    expect(displayHandle("slopmaster")).toBe("@slo•••ter");
+    expect(displayHandle("abcdef")).toBe("@a•••");
   });
 });
 
@@ -40,27 +36,20 @@ describe("fetchStats", () => {
     });
   });
 
-  it("returns live stats and masks unmasked handles", async () => {
-    const { fetchStats } = await loadWithApi(async () =>
-      Response.json({
-        accountsBlocked: 12,
-        recent: [
-          { blockedAt: "2026-11-07T12:00:00Z", maskedHandle: "@spambot9000" },
-        ],
-      })
-    );
+  it("returns live stats from /v1/stats", async () => {
+    const body = {
+      accountsBlocked: 12,
+      recent: [
+        { blockedAt: "2026-11-07T12:00:00.000Z", maskedHandle: "spa•••000" },
+      ],
+    };
+    const { fetchStats } = await loadWithApi(async () => Response.json(body));
     await expect(fetchStats()).resolves.toEqual({
       source: "live",
-      stats: {
-        accountsBlocked: 12,
-        recent: [
-          { blockedAt: "2026-11-07T12:00:00Z", maskedHandle: "@spa•••000" },
-        ],
-      },
+      stats: body,
     });
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.lustre.test/v1/stats",
-      expect.anything()
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
+      "https://api.lustre.test/v1/stats"
     );
   });
 

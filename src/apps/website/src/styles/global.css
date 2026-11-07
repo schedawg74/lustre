@@ -15,9 +15,10 @@
 }
 
 /*
- * The feed of blocked accounts (components/live-stats.tsx). A card arrives,
- * its thumb turns down (pollice verso), its name and post are chiselled
- * out (damnatio memoriae), and later it slides away.
+ * The feed of blocked accounts (components/live-stats.tsx). A post arrives,
+ * the thumb turns down (pollice verso), the card dims, its name, handle and
+ * text are chiselled out (damnatio memoriae), "Blocked by Lustre" takes the
+ * place of the actions, and later the card slides away.
  */
 @layer components {
   @keyframes feed-card-in {
@@ -47,6 +48,14 @@
     translate: 2rem 0;
   }
 
+  .feed-post {
+    color: var(--color-text);
+    background: var(--color-surface);
+    transition:
+      background-color 500ms ease 200ms,
+      color 500ms ease 200ms;
+  }
+
   .feed-thumb {
     color: var(--color-muted);
     rotate: 180deg;
@@ -57,28 +66,38 @@
 
   .feed-chisel {
     background:
-      linear-gradient(var(--color-danger), var(--color-danger)) no-repeat 0 60%
+      linear-gradient(var(--color-danger), var(--color-danger)) no-repeat 0 58%
       / 0 2px;
     box-decoration-break: clone;
-    transition:
-      background-size 500ms ease 200ms,
-      color 500ms ease 200ms;
+    transition: background-size 500ms ease 200ms;
+  }
+
+  .feed-actions {
+    transition: opacity 300ms ease 300ms;
   }
 
   .feed-verdict {
     opacity: 0;
-    transition: opacity 400ms ease 400ms;
+    transition: opacity 400ms ease 500ms;
   }
 
   .feed-card:not([data-state="arriving"]) {
+    & .feed-post {
+      color: var(--color-muted);
+      background: var(--color-canvas);
+    }
+
     & .feed-thumb {
       color: var(--color-danger);
       rotate: 0deg;
     }
 
     & .feed-chisel {
-      color: var(--color-muted);
       background-size: 100% 2px;
+    }
+
+    & .feed-actions {
+      opacity: 0;
     }
 
     & .feed-verdict {

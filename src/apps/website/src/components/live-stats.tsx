@@ -1,3 +1,4 @@
+import { ICON_VIEWBOX } from "@lustre/icons/icons";
 import { Icon } from "@lustre/icons/react";
 import {
   type ReactNode,
@@ -11,14 +12,14 @@ import {
 import {
   estimateHoursSavedPerWeek,
   estimatePostsHiddenPerWeek,
-  POSTS_PER_ACCOUNT_PER_WEEK,
-  SECONDS_PER_POST,
 } from "../estimates";
 import {
-  EXCERPTS,
+  displayHandle,
   fetchStats,
   type RecentBlock,
   SAMPLE_STATS,
+  SLOP_POSTS,
+  type SlopPost,
   type StatsResult,
 } from "../stats";
 
@@ -28,8 +29,19 @@ const SETTLED_CARDS = 4;
 const HALF_STEP_MS = 1300;
 const COUNT_UP_MS = 1800;
 
+/** Post actions, drawn in the Meandros style (straight lines, square caps). */
+const POST_ACTIONS = [
+  { d: "M4 5H20V16H11L6 20V16H4Z", key: "replies" },
+  {
+    d: "M4 13V7H17 M14 4L17 7L14 10 M20 11V17H7 M10 14L7 17L10 20",
+    key: "reposts",
+  },
+  { d: "M12 20L4 12V7L7 4H9L12 7L15 4H17L20 7V12Z", key: "likes" },
+  { d: "M6 19V12 M12 19V5 M18 19V10", key: "views" },
+] as const;
+
 type CardState = "arriving" | "blocked" | "leaving";
-type Card = { excerpt: string; handle: string; id: number; state: CardState };
+type Card = { handle: string; id: number; post: SlopPost; state: CardState };
 type Feed = { cards: Card[]; cursor: number };
 type FeedAction =
   | { recent: RecentBlock[]; type: "arrive" | "reset" }
@@ -40,9 +52,9 @@ const cardAt = (
   cursor: number,
   state: CardState
 ): Card => ({
-  excerpt: EXCERPTS[(cursor * 3) % EXCERPTS.length] ?? EXCERPTS[0],
-  handle: recent[cursor % recent.length]?.maskedHandle ?? "",
+  handle: displayHandle(recent[cursor % recent.length]?.maskedHandle ?? ""),
   id: cursor,
+  post: SLOP_POSTS[(cursor * 3) % SLOP_POSTS.length] ?? SLOP_POSTS[0],
   state,
 });
 
@@ -144,21 +156,57 @@ const formatNumber = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
-const FeedCard = ({ card }: { card: Card }) => (
-  <li className="feed-card" data-state={card.state}>
+const initials = (name: string): string =>
+  name
+    .split(" ")
+    .slice(0, 2)
+    .map((word) => word.charAt(0))
+    .join("");
+
+const FeedCard = ({ card: { handle, post, state } }: { card: Card }) => (
+  <li className="feed-card" data-state={state}>
     <div className="min-h-0 overflow-hidden">
-      <div className="mb-3 flex gap-4 rounded-stone border border-line bg-surface p-4">
-        <Icon className="feed-thumb mt-0.5 shrink-0" name="pollice" size={22} />
+      <div className="feed-post mb-3 flex gap-3 rounded-stone border border-line p-4">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-line font-medium text-sm text-text">
+          {initials(post.name)}
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="flex items-baseline justify-between gap-3">
-            <span className="feed-chisel font-medium">{card.handle}</span>
-            <span className="feed-verdict inscription text-[0.65rem] text-muted">
-              Blocked
-            </span>
+          <div className="flex items-start gap-3">
+            <p className="min-w-0 flex-1 truncate text-sm">
+              <span className="feed-chisel font-bold">{post.name}</span>{" "}
+              <span className="feed-chisel text-muted">{handle}</span>
+              <span className="text-muted"> · {post.age}</span>
+            </p>
+            <Icon className="feed-thumb shrink-0" name="pollice" size={18} />
+          </div>
+          <p className="mt-1 text-[0.95rem] leading-snug">
+            <span className="feed-chisel">{post.text}</span>
           </p>
-          <p className="mt-1 text-sm leading-relaxed">
-            <span className="feed-chisel">{card.excerpt}</span>
-          </p>
+          <div className="relative mt-3 text-muted text-xs">
+            <ul className="feed-actions flex max-w-xs justify-between">
+              {POST_ACTIONS.map((action) => (
+                <li className="flex items-center gap-1.5" key={action.key}>
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height={15}
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
+                    strokeWidth={2}
+                    viewBox={ICON_VIEWBOX}
+                    width={15}
+                  >
+                    <path d={action.d} />
+                  </svg>
+                  {post[action.key]}
+                </li>
+              ))}
+            </ul>
+            <p className="feed-verdict inscription absolute inset-0 flex items-center text-[0.65rem]">
+              Blocked by Lustre
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -183,36 +231,76 @@ const Counter = ({
   </div>
 );
 
+const Counters = ({
+  accountsBlocked,
+  reducedMotion,
+}: {
+  accountsBlocked: number;
+  reducedMotion: boolean;
+}) => {
+  const ref = useRef<HTMLDListElement>(null);
+  const onScreen = useOnScreen(ref);
+  const progress = useCountUp(onScreen && !reducedMotion);
+  const shown = reducedMotion ? 1 : progress;
+  const counters = [
+    { label: "Accounts blocked", value: accountsBlocked },
+    {
+      label: "Posts and replies hidden per week",
+      value: estimatePostsHiddenPerWeek(accountsBlocked),
+    },
+    {
+      label: "Hours saved per week",
+      value: estimateHoursSavedPerWeek(accountsBlocked),
+    },
+  ];
+  return (
+    <dl className="grid gap-6 sm:grid-cols-3 lg:col-span-2" ref={ref}>
+      {counters.map((counter) => (
+        <Counter
+          key={counter.label}
+          label={counter.label}
+          shown={shown}
+          value={counter.value}
+        />
+      ))}
+    </dl>
+  );
+};
+
 /**
  * The hero (children), the feed of recently blocked accounts beside it, and
- * the counters below. Data comes from the Lustre server when it is set,
- * otherwise from the sample data.
+ * the counters below. The counters need live data from the Lustre server;
+ * with the sample data they show only in development.
  */
 export const LiveStats = ({ children }: { children?: ReactNode }) => {
   const [result, setResult] = useState<StatsResult>({
     source: "sample",
     stats: SAMPLE_STATS,
   });
-  const { accountsBlocked, recent } = result.stats;
+  const recent =
+    result.stats.recent.length > 0 ? result.stats.recent : SAMPLE_STATS.recent;
   const [feed, dispatch] = useReducer(feedReducer, recent, initialFeed);
   const reducedMotion = useMedia("(prefers-reduced-motion: reduce)");
   const pageVisible = usePageVisible();
   const feedRef = useRef<HTMLDivElement>(null);
-  const countersRef = useRef<HTMLDListElement>(null);
   const feedOnScreen = useOnScreen(feedRef);
-  const countersOnScreen = useOnScreen(countersRef);
-  const progress = useCountUp(countersOnScreen && !reducedMotion);
   const running = feedOnScreen && pageVisible && !reducedMotion;
+  const showCounters = result.source === "live" || import.meta.env.DEV;
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchStats(controller.signal).then((next) => {
+    let active = true;
+    fetchStats().then((next) => {
+      if (!active) {
+        return;
+      }
       setResult(next);
-      if (next.source === "live") {
+      if (next.source === "live" && next.stats.recent.length > 0) {
         dispatch({ recent: next.stats.recent, type: "reset" });
       }
     });
-    return () => controller.abort();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -227,30 +315,17 @@ export const LiveStats = ({ children }: { children?: ReactNode }) => {
     return () => clearInterval(timer);
   }, [running, recent]);
 
-  const shown = reducedMotion ? 1 : progress;
-  const counters = [
-    { label: "Accounts blocked", value: accountsBlocked },
-    {
-      label: "Posts and replies hidden per week (estimate)",
-      value: estimatePostsHiddenPerWeek(accountsBlocked),
-    },
-    {
-      label: "Hours saved per week (estimate)",
-      value: estimateHoursSavedPerWeek(accountsBlocked),
-    },
-  ];
-
   return (
     <div className="grid items-center gap-x-16 gap-y-12 lg:grid-cols-2">
       <div>{children}</div>
       <div>
         <p className="sr-only">
-          An animated list shows AI-slop accounts that Lustre users blocked,
-          with masked handles.
+          An animated list shows AI-slop posts whose authors Lustre users
+          blocked, with masked handles.
         </p>
         <div
           aria-hidden="true"
-          className="mask-b-from-75% h-[27rem] overflow-hidden sm:h-[25rem]"
+          className="mask-b-from-75% h-[30rem] overflow-hidden"
           ref={feedRef}
         >
           <ul>
@@ -260,26 +335,12 @@ export const LiveStats = ({ children }: { children?: ReactNode }) => {
           </ul>
         </div>
       </div>
-      <div className="lg:col-span-2">
-        <dl className="grid gap-6 sm:grid-cols-3" ref={countersRef}>
-          {counters.map((counter) => (
-            <Counter
-              key={counter.label}
-              label={counter.label}
-              shown={shown}
-              value={counter.value}
-            />
-          ))}
-        </dl>
-        <p className="mt-6 text-muted text-sm">
-          Estimates assume each blocked account would show about{" "}
-          {POSTS_PER_ACCOUNT_PER_WEEK} posts or replies per week in one feed,
-          read for about {SECONDS_PER_POST} seconds each.
-          {result.source === "sample"
-            ? " Sample data: live numbers appear when the shared blocklist launches."
-            : null}
-        </p>
-      </div>
+      {showCounters ? (
+        <Counters
+          accountsBlocked={result.stats.accountsBlocked}
+          reducedMotion={reducedMotion}
+        />
+      ) : null}
     </div>
   );
 };

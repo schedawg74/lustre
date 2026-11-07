@@ -50,9 +50,15 @@ setup: [src/packages/infra/README.md](src/packages/infra/README.md).
 
 ## Install (unpacked)
 
+You need git and Node 22 or newer. Install pnpm outside the repository: inside
+it, `npx` reads the `devEngines` Node pin (24.22.2) and refuses to run on
+another Node version. pnpm itself downloads the pinned Node for the scripts.
+
 ```sh
+(cd ~ && npm install -g pnpm@12.15.0)   # or: corepack enable pnpm
+git clone https://github.com/schedawg74/lustre.git && cd lustre
 pnpm install
-pnpm build
+pnpm --filter @lustre/extension build
 ```
 
 - **Chrome / Edge / Brave:** open `chrome://extensions`, turn on Developer mode,

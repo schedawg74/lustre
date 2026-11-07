@@ -62,6 +62,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @lustre/website build
+        env:
+          # The landing page reads live counters from the API; without it the
+          # counters are not rendered (see .agents/memory/website.md).
+          PUBLIC_API_URL: https://api.${{ vars.LUSTRE_DOMAIN }}
       - name: Pack the site
         run: |
           test -f src/apps/website/dist/index.html

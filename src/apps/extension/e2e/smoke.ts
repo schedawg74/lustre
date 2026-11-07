@@ -247,6 +247,17 @@ const main = async () => {
     assert.match(listRow ?? "", /AI slop/);
     assert.match(listRow ?? "", /Done · 2 blocked, 1 skipped/);
     await popupAfter.getByRole("tab", { name: /Accounts/ }).click();
+    // The popup renders defaults first and fills in when storage loads, so
+    // wait for the loaded counts instead of reading the first render.
+    await popupAfter
+      .waitForFunction(
+        () =>
+          document.querySelector('[data-testid="count-blocked"] span')
+            ?.textContent === "2",
+        null,
+        { timeout: 10_000 }
+      )
+      .catch(() => undefined);
     const counts: string[] = [];
     for (const status of ["pending", "blocked", "skipped"]) {
       const text = await popupAfter

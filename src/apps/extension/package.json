@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@lustre/block-queue": "workspace:*",
+    "@lustre/icons": "workspace:*",
     "@lustre/tailwind-config": "workspace:*",
     "@lustre/x-client": "workspace:*",
     "react": "catalog:",

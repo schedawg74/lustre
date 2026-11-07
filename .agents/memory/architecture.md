@@ -14,6 +14,7 @@ Use manifests and lockfiles for dependency versions.
 | `apps/extension/src/lib/x/` | Everything that runs on x.com: session, page bridge protocol, post buttons, list import, block runner, DOM selectors |
 | `apps/extension/e2e/` | Playwright smoke test against a fake x.com |
 | `packages/x-client/` | X web API calls (`client.ts`) and GraphQL parsing (`users.ts`). No extension or DOM APIs; `fetch` is injected |
+| `packages/icons/` | Meandros icon set (path data, React component, DOM builder, SVG strings) and the brand icon SVGs |
 | `packages/block-queue/` | Pure functions over the block queue: add, next, record outcome, skip, retry, summary, delay |
 | `tooling/typescript/` | Shared `tsconfig` base |
 | `tooling/tailwind/` | Tailwind CSS 4 theme (`theme.css`): colors, fonts, motifs. See [conventions](conventions.md#theme) |

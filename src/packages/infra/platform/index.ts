@@ -1,25 +1,16 @@
 import { Firewall, Server, Volume, VolumeAttachment } from "@pulumi/hcloud";
 import { all, secret } from "@pulumi/pulumi";
 import { readSettings } from "./config";
+import { CLOUDFLARE_RANGES, firewallRules } from "./firewall";
 import { buildCloudInit } from "./host";
 
 const settings = readSettings();
 const labels = { project: "lustre", service: "blocklist" };
 
-// Only HTTP and HTTPS are public. Tailscale reaches the host through NAT
-// traversal, so no SSH or WireGuard port is open.
 const firewall = new Firewall("lustre-web", {
   labels,
   name: "lustre-web",
-  rules: [
-    { port: "80", protocol: "tcp" },
-    { port: "443", protocol: "tcp" },
-    { port: "443", protocol: "udp" },
-  ].map((rule) => ({
-    ...rule,
-    direction: "in",
-    sourceIps: ["0.0.0.0/0", "::/0"],
-  })),
+  rules: firewallRules(settings.cloudflareProxy),
 });
 
 // The SQLite database is the product. The volume outlives the server.
@@ -46,7 +37,6 @@ const userData = secret(
   ]).apply(
     ([volumeId, tailscaleAuthKey, accessKeyId, bucket, secretAccessKey]) =>
       buildCloudInit({
-        acmeEmail: settings.acmeEmail,
         backup: {
           accessKeyId,
           bucket,
@@ -55,10 +45,10 @@ const userData = secret(
           secretAccessKey,
         },
         domain: settings.domain,
-        serverImageTag: settings.serverImageTag,
         tailscaleAuthKey,
         tailscaleHostname: settings.tailscaleHostname,
         tailscaleTag: settings.tailscaleTag,
+        trustedProxies: settings.cloudflareProxy ? CLOUDFLARE_RANGES : [],
         volumeId,
       })
   )
@@ -86,8 +76,11 @@ const attachment = new VolumeAttachment("lustre-data", {
   volumeId: volume.id.apply(Number),
 });
 
-// Point the A and AAAA records of the domain to these addresses.
+// Point the A and AAAA records of <domain>, www.<domain>, and api.<domain> to
+// these addresses (or to Cloudflare's proxy, see cloudflareProxy).
 export const { ipv4Address, ipv6Address } = server;
 // The device on the host is /dev/disk/by-id/scsi-0HC_Volume_<dataVolumeId>.
 export const dataVolumeId = attachment.volumeId;
-export const { domain, tailscaleHostname } = settings;
+export const { cloudflareProxy, domain, tailscaleHostname } = settings;
+export const websiteUrl = `https://${settings.domain}`;
+export const apiUrl = `https://api.${settings.domain}`;

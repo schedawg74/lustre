@@ -9,8 +9,6 @@ const OBJECT_STORAGE_LOCATIONS = ["fsn1", "nbg1", "hel1"];
 const SERVER_TYPE = /^(cax|cx|cpx|ccx)\d{2}$/;
 const DOMAIN =
   /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
-const EMAIL = /^[^\s@"'\\]+@[^\s@"'\\]+\.[a-z]{2,63}$/;
-const IMAGE_TAG = /^\w[\w.-]{0,127}$/;
 const TAILSCALE_HOSTNAME = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 const TAILSCALE_TAG = /^tag:[a-z0-9-]{1,63}$/;
 // Values go into files on the host. A line break or quote could change them.
@@ -29,8 +27,6 @@ export const readSettings = () => {
     allowedValues: OBJECT_STORAGE_LOCATIONS,
   });
   return {
-    // Let's Encrypt sends certificate notices to this address. Optional.
-    acmeEmail: config.get("acmeEmail", { pattern: EMAIL }),
     backup: {
       accessKeyId: config.requireSecret("backupAccessKeyId", {
         pattern: SINGLE_LINE,
@@ -44,11 +40,13 @@ export const readSettings = () => {
         pattern: SINGLE_LINE,
       }),
     },
-    // The public host name of the API. Its A and AAAA records point to the server.
+    // Put Cloudflare's proxy in front of the host. The firewall then admits
+    // HTTP and HTTPS only from Cloudflare. Off by default; see the README.
+    cloudflareProxy: config.getBoolean("cloudflareProxy") ?? false,
+    // The apex domain. The website is served on it, the API on api.<domain>,
+    // and www.<domain> redirects to the apex.
     domain: config.require("domain", { pattern: DOMAIN }),
     location,
-    // The first image of a new server. Later, deploy-server.yml sets the tag on the host.
-    serverImageTag: config.require("serverImageTag", { pattern: IMAGE_TAG }),
     serverType,
     // A tagged, pre-approved auth key. The host deletes it after it joins the tailnet.
     tailscaleAuthKey: config.requireSecret("tailscaleAuthKey", {

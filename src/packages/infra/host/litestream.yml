@@ -1,0 +1,14 @@
+# Litestream expands the variables from /etc/lustre/litestream.env, which
+# cloud-init writes from the Pulumi stack secrets.
+snapshot:
+  interval: 24h
+  # Point-in-time restore for the last 7 days.
+  retention: 168h
+dbs:
+  - path: /data/lustre.db
+    replica:
+      type: s3
+      bucket: ${LITESTREAM_BUCKET}
+      path: lustre
+      endpoint: ${LITESTREAM_ENDPOINT}
+      region: ${LITESTREAM_REGION}

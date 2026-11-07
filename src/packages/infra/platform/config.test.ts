@@ -8,9 +8,8 @@ const stackConfig: Record<string, string> = {
   "lustre-platform:backupBucket": "lustre-backup",
   "lustre-platform:backupLocation": "nbg1",
   "lustre-platform:backupSecretAccessKey": "secret-key",
-  "lustre-platform:domain": "blocklist.example.com",
+  "lustre-platform:domain": "lustre.example.com",
   "lustre-platform:location": "fsn1",
-  "lustre-platform:serverImageTag": "latest",
   "lustre-platform:serverType": "cax11",
   "lustre-platform:tailscaleAuthKey": "tskey-auth-abc123-def456",
   "lustre-platform:tailscaleHostname": "lustre",
@@ -42,12 +41,12 @@ describe("readSettings", () => {
   it("reads a complete stack", () => {
     const settings = readWith();
     expect(settings).toMatchObject({
-      acmeEmail: undefined,
       backup: {
         endpoint: "https://nbg1.your-objectstorage.com",
         region: "nbg1",
       },
-      domain: "blocklist.example.com",
+      cloudflareProxy: false,
+      domain: "lustre.example.com",
       location: "fsn1",
       serverType: "cax11",
       volumeSizeGb: 10,
@@ -57,19 +56,26 @@ describe("readSettings", () => {
   it.each([
     ["location", "eu-central-1"],
     ["serverType", "t4g.small"],
-    ["domain", "https://blocklist.example.com"],
-    ["domain", "Blocklist.Example.com"],
-    ["serverImageTag", "latest; rm -rf /"],
+    ["domain", "https://lustre.example.com"],
+    ["domain", "Lustre.Example.com"],
+    ["domain", "lustre.example.com/path"],
     ["tailscaleTag", "lustre"],
     ["tailscaleHostname", "Lustre Host"],
     ["tailscaleAuthKey", "not-a-key"],
     ["backupLocation", "ash"],
     ["backupBucket", "Bad_Bucket"],
     ["backupSecretAccessKey", "two\nlines"],
-    ["acmeEmail", "owner"],
+    ["cloudflareProxy", "yes"],
     ["volumeSizeGb", "5"],
   ])("rejects %s = %j", (key, value) => {
     expect(() => readWith({ [`lustre-platform:${key}`]: value })).toThrow(key);
+  });
+
+  it("turns on the Cloudflare proxy only when the stack says so", () => {
+    expect(
+      readWith({ "lustre-platform:cloudflareProxy": "true" }).cloudflareProxy
+    ).toBe(true);
+    expect(without("cloudflareProxy")().cloudflareProxy).toBe(false);
   });
 
   it("rejects an Arm server outside the EU", () => {
@@ -113,5 +119,6 @@ describe("readSettings", () => {
     );
     expect(file).not.toMatch(/tskey-|secretAccessKey: [^{]/);
     expect(file).toMatch(/^ {2}lustre-platform:serverType: cax11$/m);
+    expect(file).toMatch(/^ {2}lustre-platform:cloudflareProxy: "false"$/m);
   });
 });

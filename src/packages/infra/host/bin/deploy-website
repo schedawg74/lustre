@@ -1,0 +1,88 @@
+#!/bin/sh
+# Usage:
+#   deploy-website <release id> < site.tar.gz   unpack a release and switch to it
+#   deploy-website --rollback [<release id>]    switch to that release, or to the one before the current
+#   deploy-website --list                       list the releases, the current one marked with *
+#
+# Caddy serves /data/www/current, a symlink to releases/<release id>. The
+# switch is one rename(2), so every request sees either the old or the new
+# release. Release ids sort by time (deploy-website.yml uses
+# <UTC time>-<commit>). The newest releases stay for a rollback.
+set -eu
+
+www=/data/www
+keep=5
+
+usage() {
+  echo "Usage: deploy-website <release id> < site.tar.gz | --rollback [<release id>] | --list" >&2
+  exit 2
+}
+
+check_id() {
+  case "$1" in
+    "" | .* | *[!A-Za-z0-9._-]*) usage ;;
+  esac
+}
+
+# Release names, oldest first. Folders that start with a dot are unfinished uploads.
+releases() {
+  find "$www/releases" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | sort
+}
+
+current() {
+  if [ -L "$www/current" ]; then
+    basename "$(readlink "$www/current")"
+  fi
+}
+
+switch_to() {
+  [ -f "$www/releases/$1/index.html" ] || {
+    echo "Release $1 does not exist or has no index.html" >&2
+    exit 1
+  }
+  ln -sfn "releases/$1" "$www/current.next"
+  mv -Tf "$www/current.next" "$www/current"
+  echo "Current release: $1"
+}
+
+mkdir -p "$www/releases"
+
+case "${1:-}" in
+  --list)
+    now="$(current)"
+    for release in $(releases); do
+      if [ "$release" = "$now" ]; then echo "* $release"; else echo "  $release"; fi
+    done
+    ;;
+  --rollback)
+    target="${2:-}"
+    if [ -z "$target" ]; then
+      target="$(releases | grep -B1 -x "$(current)" | head -n 1)"
+      [ -n "$target" ] && [ "$target" != "$(current)" ] || {
+        echo "No release before $(current)" >&2
+        exit 1
+      }
+    fi
+    check_id "$target"
+    switch_to "$target"
+    ;;
+  *)
+    id="${1:-}"
+    check_id "$id"
+    [ ! -e "$www/releases/$id" ] || {
+      echo "Release $id exists already" >&2
+      exit 1
+    }
+    staging="$www/releases/.$id"
+    rm -rf "$staging"
+    mkdir "$staging"
+    tar -xz -C "$staging"
+    printf '{"release":"%s","deployedAt":"%s"}\n' "$id" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$staging/release.json"
+    mv "$staging" "$www/releases/$id"
+    switch_to "$id"
+    now="$(current)"
+    for old in $(releases | head -n -"$keep"); do
+      [ "$old" = "$now" ] || rm -rf "${www:?}/releases/$old"
+    done
+    ;;
+esac

@@ -3,7 +3,7 @@ config:
   lustre-platform:location: fsn1
   lustre-platform:serverType: cax11
   lustre-platform:volumeSizeGb: "10"
-  lustre-platform:serverImageTag: latest
   lustre-platform:tailscaleHostname: lustre
   lustre-platform:tailscaleTag: tag:lustre
   lustre-platform:backupLocation: nbg1
+  lustre-platform:cloudflareProxy: "false"

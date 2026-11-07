@@ -1,15 +1,14 @@
 import { parseListId, type XUser } from "@lustre/x-client/users";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
 import { send } from "@/lib/messages";
-import { pendingImportItem } from "@/lib/storage";
+import { isImporting } from "@/lib/pending-imports";
+import { pendingImportsItem } from "@/lib/storage";
 import { SELECTORS } from "./dom";
 import type { XSession } from "./session";
 
 const SCROLL_EVERY_MS = 1200;
 /** No new members for this long means the end of the list. */
 const IDLE_FINISH_MS = 12_000;
-/** A request older than this was abandoned; ignore it. */
-const REQUEST_TTL_MS = 10 * 60 * 1000;
 
 const MEMBERS_PATH = /^\/i\/lists\/(\d+)\/members\/?$/;
 
@@ -189,7 +188,7 @@ const runImport = (
       run: async () => {
         stop();
         panel.root.remove();
-        await send({ type: "import/cancel" });
+        await send({ listId, type: "import/cancel" });
       },
     },
   ]);
@@ -208,12 +207,12 @@ export const maybeStartListImport = async (
   if (!match || isRunning()) {
     return;
   }
-  const request = await pendingImportItem.getValue();
   const listId = parseListId(match[1] ?? "");
   if (
-    !(request && listId) ||
-    request.listId !== listId ||
-    Date.now() - request.requestedAt > REQUEST_TTL_MS
+    !(
+      listId &&
+      isImporting(await pendingImportsItem.getValue(), listId, Date.now())
+    )
   ) {
     return;
   }

@@ -1,5 +1,6 @@
 import { type BlockQueue, migrateQueueV1 } from "@lustre/block-queue/queue";
 import { storage } from "wxt/utils/storage";
+import type { PendingImports } from "./pending-imports";
 
 /** The list that started this project: accounts that post AI slop. */
 export const DEFAULT_LIST_URL = "https://x.com/i/lists/2116659176894071283";
@@ -52,8 +53,6 @@ export type TrackedList = {
   memberCount?: number;
 };
 
-export type PendingImport = { listId: string; requestedAt: number };
-
 export const settingsItem = storage.defineItem<Settings>("local:settings", {
   fallback: DEFAULT_SETTINGS,
 });
@@ -80,9 +79,10 @@ export const listsItem = storage.defineItem<Record<string, TrackedList>>(
   { fallback: {} }
 );
 
-export const pendingImportItem = storage.defineItem<PendingImport | null>(
-  "local:pendingImport",
-  { fallback: null }
+/** Imports that are collecting members (see pending-imports.ts). */
+export const pendingImportsItem = storage.defineItem<PendingImports>(
+  "local:pendingImports",
+  { fallback: {} }
 );
 
 /** Settings saved by an older version miss newer keys; fill them in. */

@@ -8,16 +8,25 @@ catalog:
   '@types/react': 19.3.0
   '@tailwindcss/vite': 4.3.3
   '@types/react-dom': 19.3.0
+  drizzle-orm: 0.45.4
   react: 19.3.0
   react-dom: 19.3.0
   tailwindcss: 4.3.3
+  tsx: 4.23.15
   typescript: 7.0.2
   vitest: 5.0.5
+  zod: 4.6.7
 catalogMode: prefer
+# better-sqlite3 ships prebuilt binaries and runs no install script.
 allowBuilds:
   esbuild: true
   '@biomejs/biome': true
+  protobufjs: false
   spawn-sync: false
 # Resolve only versions that are at least 12 hours old.
 minimumReleaseAge: 720
 nodeLinker: hoisted
+# Pulumi runs the infra program through tsx, not through its TypeScript peer.
+peerDependencyRules:
+  allowedVersions:
+    '@pulumi/pulumi>typescript': '7'

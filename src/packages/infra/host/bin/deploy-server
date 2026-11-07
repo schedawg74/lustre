@@ -1,0 +1,51 @@
+#!/bin/sh
+# Usage: deploy-server <image tag>
+#
+# Starts ghcr.io/schedawg74/lustre-server:<tag> with the runtime files of this
+# folder. deploy-server.yml unpacks src/packages/infra/host into
+# /data/app/incoming and runs incoming/bin/deploy-server; the script checks the
+# new files, copies them to /data/app, and starts Compose.
+# Rollback: /data/app/bin/deploy-server <older tag> (uses the installed files).
+set -eu
+
+app=/data/app
+tag="${1:-}"
+case "$tag" in
+  "" | *[!A-Za-z0-9._-]*)
+    echo "Usage: deploy-server <image tag>" >&2
+    exit 2
+    ;;
+esac
+
+bundle="$(cd "$(dirname "$0")/.." && pwd)"
+litestream_changed=no
+
+if [ "$bundle" != "$app" ]; then
+  echo "Checking the new runtime files"
+  SERVER_TAG="$tag" docker compose -f "$bundle/compose.yaml" config --quiet
+  SERVER_TAG="$tag" docker compose -f "$bundle/compose.yaml" run --rm --no-deps \
+    caddy caddy validate --config /etc/caddy/Caddyfile
+  if ! cmp -s "$bundle/litestream.yml" "$app/litestream.yml"; then
+    litestream_changed=yes
+  fi
+  rm -rf "${app:?}/bin" "${app:?}/caddy"
+  cp -R "$bundle/bin" "$bundle/caddy" "$bundle/compose.yaml" "$bundle/litestream.yml" "$app/"
+fi
+
+cd "$app"
+printf 'SERVER_TAG=%s\n' "$tag" > .env
+docker compose pull --quiet
+docker compose up --detach --remove-orphans
+# Compose does not see changes inside mounted files. A new Caddy container
+# needs a moment before its admin endpoint accepts the reload.
+tries=0
+until docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile; do
+  tries=$((tries + 1))
+  [ "$tries" -lt 10 ] || exit 1
+  sleep 2
+done
+if [ "$litestream_changed" = yes ]; then
+  docker compose restart litestream
+fi
+docker image prune --force
+echo "Started lustre-server:$tag"

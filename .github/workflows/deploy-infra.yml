@@ -1,0 +1,75 @@
+name: Deploy infra
+# Runs `pulumi preview` or `pulumi up` for the `production` stack of
+# src/packages/infra/platform. The `infra-production` environment needs a
+# reviewer. See src/packages/infra/README.md.
+#
+#   gh workflow run deploy-infra.yml --ref main -f command=preview
+#   gh workflow run deploy-infra.yml --ref main -f command=up -f confirm=production
+run-name: infra ${{ inputs.command }} ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: Pulumi command
+        type: choice
+        options: [preview, up]
+        required: true
+      confirm:
+        description: For `up` only. Type `production`.
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  pulumi:
+    name: Pulumi ${{ inputs.command }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: infra-production
+    defaults:
+      run:
+        working-directory: src/packages/infra/platform
+    env:
+      # State in a Hetzner Object Storage bucket, for example
+      # s3://lustre-pulumi-state?endpoint=fsn1.your-objectstorage.com&region=fsn1
+      PULUMI_BACKEND_URL: ${{ vars.PULUMI_BACKEND_URL }}
+      PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.PULUMI_STATE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PULUMI_STATE_SECRET_ACCESS_KEY }}
+      HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+    steps:
+      - name: Check the confirmation
+        if: inputs.command == 'up'
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "production" ]; then
+            echo "::error::pulumi up needs confirm=production"
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - uses: pulumi/actions@v7
+        with:
+          pulumi-version: 3.274.1
+      - name: Preview
+        run: pulumi preview --stack production --diff --non-interactive
+      - name: Apply
+        if: inputs.command == 'up'
+        run: pulumi up --stack production --yes --non-interactive

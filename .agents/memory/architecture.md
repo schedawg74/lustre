@@ -1,6 +1,6 @@
 # Architecture
 
-Lustre is a WXT browser extension in a Better-T-Stack monorepo (pnpm workspaces, Turborepo, Biome with Ultracite), with a static landing site. The extension has no server.
+Lustre is a WXT browser extension in a Better-T-Stack monorepo (pnpm workspaces, Turborepo, Biome with Ultracite), with a static landing site. A small blocklist server collects the accounts that installs block and serves them as a shared blocklist (see [server](server.md)). The extension does not call it yet.
 Use manifests and lockfiles for dependency versions.
 
 ## Code map
@@ -17,10 +17,14 @@ Use manifests and lockfiles for dependency versions.
 | `packages/x-client/` | X web API calls (`client.ts`) and GraphQL parsing (`users.ts`). No extension or DOM APIs; `fetch` is injected |
 | `packages/icons/` | Meandros icon set (path data, React component, DOM builder, SVG strings) and the brand icon SVGs |
 | `packages/block-queue/` | Pure functions over the block queue: add, next, record outcome, skip, retry, summary, delay |
+| `apps/server/` | Express 5 blocklist server: routers, services, middleware. Bundled by tsdown into `dist/index.mjs`; Docker image in `Dockerfile` |
+| `packages/api/` | Zod schemas and types of the server API (`v1.ts`) and the typed fetch client (`client.ts`) |
+| `packages/db/` | SQLite through Drizzle ORM and better-sqlite3: schema, migrations, `openDatabase`, `runMigrations` |
+| `packages/infra/` | Pulumi program for Hetzner Cloud (`platform/`) and the host runtime files (`host/`). See [infrastructure](infrastructure.md) |
 | `tooling/typescript/` | Shared `tsconfig` base |
 | `tooling/tailwind/` | Tailwind CSS 4 theme (`theme.css`): colors, fonts, motifs. See [conventions](conventions.md#theme) |
 
-Packages have no build step. They export source files by subpath (`"./*": "./src/*.ts"`), for example `@lustre/x-client/client`.
+Packages have no build step. They export source files by subpath (`"./*": "./src/*.ts"`), for example `@lustre/x-client/client`. The server bundles the `@lustre/*` packages it imports; its other dependencies stay external and `pnpm deploy` installs them in the image.
 
 ## Runtime contexts
 
@@ -38,6 +42,8 @@ The x.com API calls run in the content script, not in the background worker: the
 - `src/packages/*` import no extension, DOM, or WXT module. Logic that can be pure goes there, with tests.
 - Only the background worker writes `blockQueue`, `runner`, `lists`, and `pendingImport`. Only the popup writes `settings`. Only the tab that holds the runner lock writes `runnerHeartbeat`.
 - Site code stays in `src/lib/<site>/`. YouTube code goes in `src/lib/youtube/` with its own content script.
+- Server layers: routers -> services -> `@lustre/db`. Routers and middleware do not import `@lustre/db`, `drizzle-orm`, or `better-sqlite3` (Biome `noRestrictedImports`). `@lustre/infra` imports no workspace package.
+- The extension and the server share only `@lustre/api`. The extension must not import `@lustre/db` or server code.
 
 ## Data flow
 

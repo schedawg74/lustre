@@ -15,9 +15,38 @@ What works today (X):
   Not interested uses X's own "Not interested in this post" entry, which X
   offers only on the For you timeline.
 
-Planned (see [docs/plans/roadmap.md](docs/plans/roadmap.md)): hide YouTube
-Shorts, a Not interested button on YouTube, and an AI curator that cleans the
-YouTube home feed using your own AI subscription.
+Planned (see [docs/plans/roadmap.md](docs/plans/roadmap.md)): a shared
+blocklist, hide YouTube Shorts, a Not interested button on YouTube, and an AI
+curator that cleans the YouTube home feed using your own AI subscription.
+
+## Shared blocklist server (in progress)
+
+`src/apps/server` is a small API that collects the accounts that Lustre
+installs block or mute, and serves them as a shared blocklist. The extension
+does not use it yet. When it does, sharing is opt-in. A report contains only
+the blocked account's public data (user id, handle, display name), the action,
+where it came from (a post, or an X list with its id, name, and owner), the
+time, and an anonymous install id. It never contains your X identity, cookies, or tokens.
+
+```sh
+pnpm dev:server             # http://localhost:3000, SQLite in src/apps/server/.data/
+docker compose up --build   # the production image on http://127.0.0.1:3000
+```
+
+API, data model, and privacy decisions:
+[.agents/memory/server.md](.agents/memory/server.md).
+
+## Hosting
+
+One Hetzner Cloud server runs everything behind one Caddy: the website on the
+apex domain (`www` redirects to it) and the API on `api.<domain>`. Pulumi
+(`src/packages/infra/platform`) creates the server; the runtime files
+(`src/packages/infra/host`) and the website ship over Tailscale with the manual
+`Deploy server` and `Deploy website` workflows. A website deploy is a new
+release folder and one symlink switch; the last 5 releases stay for a rollback.
+Hosts, domains, Caddy routes, deploy, rollback, backup, and restore:
+[.agents/memory/infrastructure.md](.agents/memory/infrastructure.md). First
+setup: [src/packages/infra/README.md](src/packages/infra/README.md).
 
 ## Install (unpacked)
 
@@ -57,7 +86,7 @@ Re-importing a list later only queues its new members.
 - Blocks and mutes call the same endpoints x.com's web app calls
   (`/i/api/1.1/blocks/create.json`, `/i/api/1.1/mutes/users/create.json`) from
   the x.com tab, so they use your logged-in session. No password or token
-  leaves your browser, and there is no server.
+  leaves your browser.
 - If x.com rejects an API call from a post button, Lustre falls back to
   clicking the same entry in the post's "⋯" menu.
 - The block queue runs in one x.com tab at a time (a Web Lock). If that tab
@@ -75,11 +104,15 @@ out like `safina` and `milton-platform`:
 src/
   apps/
     extension/        WXT browser extension (React popup, content scripts)
+    server/           Blocklist API (Express 5, SQLite), Dockerfile
     website/          Static Astro landing page (React island, Tailwind theme)
   packages/
     icons/            Meandros icon set and brand icons
     x-client/         X web API calls and GraphQL response parsing
     block-queue/      Block queue logic (no browser APIs, unit-tested)
+    api/              Blocklist API schemas (Zod) and typed fetch client
+    db/               SQLite schema and migrations (Drizzle, better-sqlite3)
+    infra/            Pulumi program and host runtime files for Hetzner Cloud
   tooling/
     typescript/       Shared tsconfig
     tailwind/         Tailwind CSS 4 theme: marble, bronze, Cinzel + Jost
@@ -92,10 +125,11 @@ docs/plans/           Planned work
 | Command | What it does |
 | --- | --- |
 | `pnpm dev` | WXT dev mode for Chrome with hot reload |
+| `pnpm dev:server` | Blocklist server with reload on change |
 | `pnpm dev:website` | Astro dev server for the landing page |
-| `pnpm build` | Production builds for Chrome (MV3) and Firefox (MV3), and the static website in `src/apps/website/dist/` |
+| `pnpm build` | Production builds for Chrome (MV3) and Firefox (MV3), the server bundle, and the static website in `src/apps/website/dist/` |
 | `pnpm zip` / `pnpm zip:firefox` | Store-ready zip files |
-| `pnpm test` | Vitest unit tests |
+| `pnpm test` | Vitest unit tests (packages, server against in-memory SQLite, infra config) |
 | `pnpm test:e2e` | Chromium smoke test of the built extension against a fake x.com |
 | `pnpm typecheck` | TypeScript in every workspace |
 | `pnpm lint` / `pnpm format` | Biome (Ultracite preset) |

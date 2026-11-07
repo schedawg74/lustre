@@ -1,0 +1,10 @@
+name: lustre-platform
+description: Lustre blocklist server on Hetzner Cloud. One server, one volume for SQLite, Litestream backups to Hetzner Object Storage
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+    # Pulumi runs the TypeScript entry point through tsx, because the repository uses TypeScript 7.
+    typescript: false
+    nodeargs: --import tsx
+main: ./index.ts

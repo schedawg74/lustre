@@ -24,7 +24,11 @@ const handlers = {
     await pendingImportItem.setValue(null);
   },
 
-  "import/finish": async ({ listId, users }): Promise<ImportSummary> => {
+  "import/finish": async ({
+    listId,
+    listName,
+    users,
+  }): Promise<ImportSummary> => {
     const settings = await readSettings();
     const { queue, ...summary } = addCandidates(
       await queueItem.getValue(),
@@ -44,6 +48,7 @@ const handlers = {
         lastImportedAt: Date.now(),
         listId,
         memberCount: users.length,
+        name: listName ?? lists[listId]?.name,
         url: `https://x.com/i/lists/${listId}`,
       },
     });

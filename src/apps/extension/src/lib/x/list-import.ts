@@ -120,6 +120,7 @@ const runImport = (
     panel.setButtons([]);
     const summary = await send({
       listId,
+      listName: session.listName(listId),
       type: "import/finish",
       users: [...members.values()],
     });

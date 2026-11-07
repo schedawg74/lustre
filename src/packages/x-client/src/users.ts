@@ -97,6 +97,33 @@ export const extractUsers = (payload: unknown): XUser[] => {
   return [...users.values()];
 };
 
+/**
+ * The name of list `listId` in a GraphQL response (ListByRestId, and any
+ * other response that embeds the list object), without emojis.
+ */
+export const extractListName = (
+  payload: unknown,
+  listId: string
+): string | undefined => {
+  const stack: unknown[] = [payload];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (Array.isArray(node)) {
+      stack.push(...node);
+      continue;
+    }
+    if (!isObject(node)) {
+      continue;
+    }
+    const id = readString(node, "id_str") ?? readString(node, "rest_id");
+    const name = readString(node, "name");
+    if (id === listId && name && node.__typename !== "User") {
+      return stripEmoji(name) || undefined;
+    }
+    stack.push(...Object.values(node));
+  }
+};
+
 /** The GraphQL operation name in an X API URL, such as `ListMembers`. */
 export const graphqlOperationName = (url: string): string | undefined => {
   const match = GRAPHQL_PATH.exec(url);

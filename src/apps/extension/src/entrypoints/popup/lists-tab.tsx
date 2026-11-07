@@ -1,15 +1,29 @@
-import type { BlockQueue } from "@lustre/block-queue/queue";
+import type { BlockQueue, EntryStatus } from "@lustre/block-queue/queue";
 import { parseListId } from "@lustre/x-client/users";
 import { type FormEvent, useId, useMemo, useState } from "react";
 import { send } from "@/lib/messages";
-import { DEFAULT_LIST_URL, listsItem, queueItem } from "@/lib/storage";
+import {
+  DEFAULT_LIST_URL,
+  DEFAULT_SETTINGS,
+  listsItem,
+  queueItem,
+  runnerItem,
+  settingsItem,
+} from "@/lib/storage";
 import { formatAgo, formatCount, shortId } from "./format";
 import { Button, Hint, inputClass, linkClass, Notice } from "./ui";
 import { useNow, useStorageItem } from "./use-storage-item";
 
-type ListProgress = { blocked: number; total: number };
+type ListProgress = Record<EntryStatus, number>;
 
-/** Blocked and total accounts per list, from the queue entries' source. */
+const emptyProgress = (): ListProgress => ({
+  blocked: 0,
+  failed: 0,
+  pending: 0,
+  skipped: 0,
+});
+
+/** Accounts per status for each list, from the queue entries' source. */
 const progressByList = (queue: BlockQueue) => {
   const progress = new Map<string, ListProgress>();
   for (const entry of Object.values(queue)) {
@@ -17,20 +31,41 @@ const progressByList = (queue: BlockQueue) => {
       continue;
     }
     const listId = entry.source.slice("list:".length);
-    const current = progress.get(listId) ?? { blocked: 0, total: 0 };
-    current.total += 1;
-    if (entry.status === "blocked") {
-      current.blocked += 1;
-    }
+    const current = progress.get(listId) ?? emptyProgress();
+    current[entry.status] += 1;
     progress.set(listId, current);
   }
   return progress;
 };
 
+const PROGRESS_PARTS: [EntryStatus, string][] = [
+  ["blocked", "blocked"],
+  ["pending", "pending"],
+  ["skipped", "skipped"],
+  ["failed", "failed"],
+];
+
+/** "Done · 212 blocked, 9 skipped" or "212 blocked · 6 pending · 9 skipped". */
+const describeProgress = (progress: ListProgress) => {
+  const parts = PROGRESS_PARTS.filter(([status]) => progress[status] > 0).map(
+    ([status, label]) => `${formatCount(progress[status])} ${label}`
+  );
+  if (parts.length === 0) {
+    return "No members queued";
+  }
+  return progress.pending === 0 && progress.failed === 0
+    ? `Done · ${parts.join(", ")}`
+    : parts.join(" · ");
+};
+
 export const ListsTab = () => {
   const lists = useStorageItem(listsItem);
   const queue = useStorageItem(queueItem);
+  const runner = useStorageItem(runnerItem);
+  const settings = { ...DEFAULT_SETTINGS, ...useStorageItem(settingsItem) };
   const now = useNow(60_000);
+  const blocksAtOnce =
+    runner.status === "running" || settings.autoStartAfterImport;
   const tracked = Object.values(lists).filter((list) => list.lastImportedAt);
   const progress = useMemo(() => progressByList(queue), [queue]);
   // Suggest the starter list only until a list was imported.
@@ -77,16 +112,18 @@ export const ListsTab = () => {
         {error ? (
           <Notice tone="danger">{error}</Notice>
         ) : (
-          <Hint>You review the accounts before anything is blocked.</Hint>
+          <Hint>
+            {blocksAtOnce
+              ? "New members are blocked right away."
+              : "New members wait in Accounts until you press Start."}
+            {settings.skipFollowing ? " Accounts you follow are skipped." : ""}
+          </Hint>
         )}
       </form>
       {tracked.length > 0 ? (
         <ul className="-mx-2 flex flex-col">
           {tracked.map((list) => {
-            const listProgress = progress.get(list.listId) ?? {
-              blocked: 0,
-              total: list.memberCount ?? 0,
-            };
+            const listProgress = progress.get(list.listId) ?? emptyProgress();
             return (
               <li
                 className="flex items-center justify-between gap-3 rounded-stone px-2 py-2 hover:bg-surface"
@@ -99,11 +136,10 @@ export const ListsTab = () => {
                     rel="noopener"
                     target="_blank"
                   >
-                    List {shortId(list.listId)}
+                    {list.name ?? `List ${shortId(list.listId)}`}
                   </a>
                   <Hint>
-                    {formatCount(listProgress.blocked)} of{" "}
-                    {formatCount(listProgress.total)} blocked · updated{" "}
+                    {describeProgress(listProgress)} · updated{" "}
                     {formatAgo(list.lastImportedAt ?? now, now)}
                   </Hint>
                 </div>

@@ -44,6 +44,8 @@ export type RunnerState = {
 
 export type TrackedList = {
   listId: string;
+  /** The list's name on X, when the import could read it. */
+  name?: string;
   url: string;
   lastImportedAt?: number;
   memberCount?: number;

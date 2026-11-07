@@ -110,6 +110,9 @@ function loadMore() {
   };
   xhr.send();
 }
+const info = new XMLHttpRequest();
+info.open("GET", "/i/api/graphql/q2/ListByRestId?variables=" + encodeURIComponent(JSON.stringify({ listId: "${LIST_ID}" })));
+info.send();
 loadMore();
 addEventListener("scroll", () => { if (cursor < 3) loadMore(); });
 </script></body></html>`;
@@ -124,6 +127,11 @@ const fakeX = (calls: ApiCall[]) => (route: Route) => {
       path: url.pathname,
     });
     return route.fulfill({ json: {} });
+  }
+  if (url.pathname.endsWith("/ListByRestId")) {
+    return route.fulfill({
+      json: { data: { list: { id_str: LIST_ID, name: "AI slop" } } },
+    });
   }
   if (url.pathname.endsWith("/ListMembers")) {
     const { cursor } = JSON.parse(url.searchParams.get("variables") ?? "{}");
@@ -235,6 +243,9 @@ const main = async () => {
     // 4. The popup shows the result.
     const popupAfter = await context.newPage();
     await openPopup(popupAfter, extensionId);
+    const listRow = await popupAfter.locator("li").first().textContent();
+    assert.match(listRow ?? "", /AI slop/);
+    assert.match(listRow ?? "", /Done · 2 blocked, 1 skipped/);
     await popupAfter.getByRole("tab", { name: /Accounts/ }).click();
     const counts: string[] = [];
     for (const status of ["pending", "blocked", "skipped"]) {

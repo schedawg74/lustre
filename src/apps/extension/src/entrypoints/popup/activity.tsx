@@ -152,8 +152,18 @@ export const ActivityNotices = () => {
   return (
     <div className="px-5 pb-2 text-xs leading-snug">
       {runner.lastError ? (
-        <p className="text-danger" role="alert">
-          {runner.lastError}
+        // The runner stops only for session errors (see block-runner.ts).
+        <p className="text-danger" role="alert" title={runner.lastError}>
+          X signed you out or refused the session. Sign in on{" "}
+          <a
+            className={`underline ${linkClass}`}
+            href="https://x.com/login"
+            rel="noopener"
+            target="_blank"
+          >
+            x.com
+          </a>
+          , then press Resume.
         </p>
       ) : (
         <p className="text-muted">

@@ -65,7 +65,7 @@ export const AccountsTab = ({
   const searchId = useId();
 
   const entries = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    const needle = search.trim().replace(/^@/, "").toLowerCase();
     return Object.values(queue)
       .filter(
         (entry) =>
@@ -125,21 +125,20 @@ export const AccountsTab = ({
               className="flex items-center justify-between gap-2 rounded-stone px-2 py-1 hover:bg-surface"
               key={entry.userId}
             >
-              <a
-                className={`min-w-0 truncate text-sm hover:text-accent ${linkClass}`}
-                href={`https://x.com/${entry.screenName}`}
-                rel="noopener"
-                target="_blank"
-              >
-                {entry.name}{" "}
-                <span className="text-muted">@{entry.screenName}</span>
+              <div className="min-w-0">
+                <a
+                  className={`block truncate text-sm hover:text-accent ${linkClass}`}
+                  href={`https://x.com/${entry.screenName}`}
+                  rel="noopener"
+                  target="_blank"
+                >
+                  {entry.name}{" "}
+                  <span className="text-muted">@{entry.screenName}</span>
+                </a>
                 {entry.reason && entry.status !== "pending" ? (
-                  <span className="text-muted">
-                    {" "}
-                    · {REASONS[entry.reason] ?? entry.reason}
-                  </span>
+                  <Hint>{REASONS[entry.reason] ?? entry.reason}</Hint>
                 ) : null}
-              </a>
+              </div>
               <RowAction entry={entry} />
             </li>
           ))}

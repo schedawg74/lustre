@@ -10,7 +10,12 @@ import type { RunnerState } from "./storage";
  */
 export type Message =
   | { type: "import/start"; listId: string }
-  | { type: "import/finish"; listId: string; users: XUser[] }
+  | {
+      type: "import/finish";
+      listId: string;
+      listName?: string;
+      users: XUser[];
+    }
   | { type: "import/cancel" }
   | { type: "queue/outcome"; userId: string; outcome: Outcome }
   | { type: "queue/skip"; userId: string }

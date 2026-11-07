@@ -242,14 +242,14 @@ export const jitteredDelay = (
 
 export type RemoveSourceResult = {
   queue: BlockQueue;
-  /** Pending accounts that came only from this source and left the queue. */
+  /** Unblocked accounts that came only from this source and left the queue. */
   dropped: number;
 };
 
 /**
  * Forgets one source, for example when a list is removed. Accounts that
- * came only from it leave the queue if they are still pending; blocked,
- * skipped and failed accounts stay as history.
+ * came only from it leave the queue if they are not blocked yet (pending or
+ * failed); blocked and skipped accounts stay as history.
  */
 export const removeSource = (
   queue: BlockQueue,
@@ -263,7 +263,11 @@ export const removeSource = (
       continue;
     }
     const sources = entry.sources.filter((item) => item !== source);
-    if (sources.length === 0 && entry.status === "pending") {
+    // Failed accounts too: Retry all would otherwise block them later.
+    if (
+      sources.length === 0 &&
+      (entry.status === "pending" || entry.status === "failed")
+    ) {
       dropped += 1;
       continue;
     }

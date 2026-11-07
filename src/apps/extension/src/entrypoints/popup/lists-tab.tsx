@@ -80,7 +80,7 @@ const ListRow = ({
   // Removing asks once more in place, instead of a browser dialog.
   const [confirming, setConfirming] = useState(false);
   return (
-    <li className="flex items-center justify-between gap-3 rounded-stone px-2 py-2 hover:bg-surface">
+    <li className="group flex items-center justify-between gap-3 rounded-stone px-2 py-2 hover:bg-surface">
       <div className="min-w-0">
         <a
           className={`block text-sm [overflow-wrap:anywhere] hover:text-accent ${linkClass}`}
@@ -100,15 +100,30 @@ const ListRow = ({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {confirming ? (
-          <Button
-            className="text-danger"
-            onBlur={() => setConfirming(false)}
-            onClick={() => send({ listId: list.listId, type: "lists/remove" })}
-            title="Removes the list and its accounts that are not blocked yet"
-            variant="quiet"
-          >
-            Remove?
-          </Button>
+          <>
+            <Button
+              onClick={() =>
+                send({ listId: list.listId, type: "lists/remove" })
+              }
+              title="Removes the list and its accounts that are not blocked yet"
+              variant="danger"
+            >
+              Remove
+            </Button>
+            {/* Where the first click landed, so a double-click keeps the list. */}
+            <Button
+              autoFocus
+              onClick={() => setConfirming(false)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setConfirming(false);
+                }
+              }}
+              variant="quiet"
+            >
+              Keep
+            </Button>
+          </>
         ) : (
           <>
             <Button
@@ -119,6 +134,7 @@ const ListRow = ({
               Update
             </Button>
             <Button
+              className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
               onClick={() => setConfirming(true)}
               title="Remove this list"
               variant="quiet"

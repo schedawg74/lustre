@@ -57,6 +57,7 @@ export const SettingsTab = () => {
         />
         <Toggle
           checked={settings.hideAfterAction}
+          indent
           label="Hide the post after an action"
           onChange={(hideAfterAction) => update({ hideAfterAction })}
         />

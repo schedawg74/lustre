@@ -8,6 +8,8 @@ import {
 } from "react";
 
 const BUTTON_VARIANTS = {
+  danger:
+    "border border-danger text-danger hover:enabled:bg-danger hover:enabled:text-canvas",
   primary:
     "border border-text bg-text text-canvas hover:enabled:border-accent hover:enabled:bg-accent hover:enabled:text-on-accent",
   quiet: "text-muted hover:enabled:text-accent",
@@ -42,17 +44,20 @@ export const Toggle = ({
   label,
   hint,
   icon,
+  indent = false,
   checked,
   onChange,
 }: {
   label: string;
   hint?: string;
   icon?: IconName;
+  /** Lines the label up with toggles that have an icon. */
+  indent?: boolean;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) => (
   <label className="flex cursor-pointer items-center justify-between gap-4 text-sm">
-    <span className="flex items-center gap-3">
+    <span className={`flex items-center gap-3 ${indent ? "pl-[30px]" : ""}`}>
       {icon ? (
         <Icon
           className={checked ? "text-accent" : "text-muted"}

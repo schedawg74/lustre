@@ -189,8 +189,16 @@ describe("several lists", () => {
       source: "list:2",
     }));
     queue = recordOutcome(queue, "2", { kind: "blocked" }, 2);
+    ({ queue } = addCandidates(queue, [user("4")], options));
+    queue = recordOutcome(
+      queue,
+      "4",
+      { kind: "failed", reason: "x", retryable: false },
+      2
+    );
     const result = removeSource(queue, "list:1");
-    expect(result.dropped).toBe(1);
+    expect(result.dropped).toBe(2);
+    expect(result.queue["4"]).toBeUndefined();
     expect(result.queue["1"]).toBeUndefined();
     expect(result.queue["2"]).toMatchObject({ sources: [], status: "blocked" });
     expect(result.queue["3"]).toMatchObject({ sources: ["list:2"] });

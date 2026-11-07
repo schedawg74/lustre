@@ -14,9 +14,10 @@ import {
 } from "@/lib/storage";
 import {
   Button,
+  Chip,
   fieldClass,
-  Hint,
   inputClass,
+  linkClass,
   Notice,
   Section,
   Stat,
@@ -25,13 +26,15 @@ import {
 import { useNow, useStorageItem } from "./use-storage-item";
 
 const HEARTBEAT_STALE_MS = 15_000;
+const REVIEW_LIMIT = 100;
+/** The review list gets a filter field above this many accounts. */
+const FILTER_FROM = 10;
 
 const STATUS_TONE = {
   idle: "text-muted",
   paused: "text-warn",
   running: "text-accent",
 } as const;
-const REVIEW_LIMIT = 100;
 
 const formatTime = (epochMs: number) =>
   new Date(epochMs).toLocaleTimeString([], {
@@ -39,11 +42,26 @@ const formatTime = (epochMs: number) =>
     minute: "2-digit",
   });
 
-const formatDate = (epochMs: number) =>
-  new Date(epochMs).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+const RELATIVE_STEPS = [
+  { ms: 86_400_000, unit: "day" },
+  { ms: 3_600_000, unit: "hour" },
+  { ms: 60_000, unit: "minute" },
+] as const;
+
+const formatAgo = (epochMs: number, now: number) => {
+  const elapsed = now - epochMs;
+  const format = new Intl.RelativeTimeFormat([], { numeric: "auto" });
+  for (const step of RELATIVE_STEPS) {
+    if (elapsed >= step.ms) {
+      return format.format(-Math.floor(elapsed / step.ms), step.unit);
+    }
+  }
+  return "just now";
+};
+
+/** "2116659176894071283" becomes "2116…1283". */
+const shortId = (id: string) =>
+  id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id;
 
 const useSettings = () => {
   const stored = useStorageItem(settingsItem);
@@ -59,60 +77,64 @@ const QueueSection = () => {
   const heartbeat = useStorageItem(runnerHeartbeatItem);
   const now = useNow(2000);
   const summary = useMemo(() => summarize(queue), [queue]);
+  const [reviewing, setReviewing] = useState(false);
   const tabConnected = now - heartbeat < HEARTBEAT_STALE_MS;
-  const rateLimited = (runner.rateLimitedUntil ?? 0) > now;
+  const rateLimitedUntil = runner.rateLimitedUntil ?? 0;
 
   let status = "Idle";
   if (runner.status === "running") {
-    status = rateLimited
-      ? `Rate limited until ${formatTime(runner.rateLimitedUntil ?? now)}`
-      : "Blocking";
+    status =
+      rateLimitedUntil > now
+        ? `Paused by X until ${formatTime(rateLimitedUntil)}`
+        : "Blocking";
   } else if (runner.status === "paused") {
     status = "Paused";
   }
 
   const setStatus = (next: "running" | "paused") =>
-    send({
-      patch: { lastError: null, status: next },
-      type: "runner/update",
-    });
+    send({ patch: { lastError: null, status: next }, type: "runner/update" });
 
   return (
     <Section
       aside={
         <span
-          className={`inscription text-[10px] ${STATUS_TONE[runner.status]}`}
+          className={`inscription text-[11px] ${STATUS_TONE[runner.status]}`}
         >
           {status}
         </span>
       }
       numeral="I"
-      title="Block queue"
+      title="Queue"
     >
-      <dl className="grid grid-cols-4 gap-2" data-testid="queue-stats">
+      <dl
+        className="grid auto-cols-fr grid-flow-col py-1"
+        data-testid="queue-stats"
+      >
         <Stat label="Pending" tone="text-text" value={summary.pending} />
         <Stat label="Blocked" tone="text-success" value={summary.blocked} />
         <Stat label="Skipped" tone="text-muted" value={summary.skipped} />
-        <Stat label="Failed" tone="text-danger" value={summary.failed} />
+        {summary.failed > 0 ? (
+          <Stat label="Failed" tone="text-danger" value={summary.failed} />
+        ) : null}
       </dl>
       {runner.lastError ? (
         <Notice tone="danger">{runner.lastError}</Notice>
       ) : null}
       {runner.status === "running" && !tabConnected ? (
         <Notice>
-          Blocking runs inside an x.com tab. Open{" "}
+          Open{" "}
           <a
-            className="text-accent underline"
+            className={`text-accent underline ${linkClass}`}
             href="https://x.com/home"
             rel="noopener"
             target="_blank"
           >
             x.com
           </a>{" "}
-          and keep it open.
+          to continue. Blocking runs in an x.com tab.
         </Notice>
       ) : null}
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         {runner.status === "running" ? (
           <Button onClick={() => setStatus("paused")}>Pause</Button>
         ) : (
@@ -129,8 +151,18 @@ const QueueSection = () => {
             Retry failed
           </Button>
         ) : null}
+        {summary.pending > 0 ? (
+          <Button
+            aria-expanded={reviewing}
+            className="ml-auto"
+            onClick={() => setReviewing(!reviewing)}
+            variant="quiet"
+          >
+            {reviewing ? "Close" : "Review"}
+          </Button>
+        ) : null}
       </div>
-      {summary.pending > 0 ? <ReviewList /> : null}
+      {reviewing && summary.pending > 0 ? <ReviewList /> : null}
     </Section>
   );
 };
@@ -139,76 +171,81 @@ const ReviewList = () => {
   const queue = useStorageItem(queueItem);
   const [filter, setFilter] = useState("");
   const filterId = useId();
-  const pending = useMemo(() => {
-    const needle = filter.trim().toLowerCase();
-    return Object.values(queue)
-      .filter(
+  const pending = useMemo(
+    () =>
+      Object.values(queue)
+        .filter((entry) => entry.status === "pending")
+        .sort((a, b) => a.addedAt - b.addedAt),
+    [queue]
+  );
+  const needle = filter.trim().toLowerCase();
+  const shown = needle
+    ? pending.filter(
         (entry) =>
-          entry.status === "pending" &&
-          (!needle ||
-            entry.screenName.toLowerCase().includes(needle) ||
-            entry.name.toLowerCase().includes(needle))
+          entry.screenName.toLowerCase().includes(needle) ||
+          entry.name.toLowerCase().includes(needle)
       )
-      .sort((a, b) => a.addedAt - b.addedAt);
-  }, [queue, filter]);
+    : pending;
 
   return (
-    <details className="group text-sm">
-      <summary className="cursor-pointer text-accent text-xs uppercase tracking-[0.14em] marker:text-accent">
-        Review pending accounts
-      </summary>
-      <div className="mt-3 flex flex-col gap-2">
-        <label className="sr-only" htmlFor={filterId}>
-          Filter pending accounts
-        </label>
-        <input
-          className={inputClass}
-          id={filterId}
-          onChange={(event) => setFilter(event.target.value)}
-          placeholder="Filter by name or @handle"
-          type="search"
-          value={filter}
-        />
-        <ul className="max-h-56 overflow-y-auto">
-          {pending.slice(0, REVIEW_LIMIT).map((entry) => (
-            <li
-              className="flex items-center justify-between gap-2 border-line border-b py-1.5"
-              key={entry.userId}
+    <div className="flex flex-col gap-2">
+      {pending.length > FILTER_FROM ? (
+        <>
+          <label className="sr-only" htmlFor={filterId}>
+            Filter accounts
+          </label>
+          <input
+            className={inputClass}
+            id={filterId}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="Filter"
+            type="search"
+            value={filter}
+          />
+        </>
+      ) : null}
+      <ul className="-mx-2 max-h-56 overflow-y-auto">
+        {shown.slice(0, REVIEW_LIMIT).map((entry) => (
+          <li
+            className="group flex items-center justify-between gap-2 rounded-stone px-2 py-1 text-sm hover:bg-surface"
+            key={entry.userId}
+          >
+            <a
+              className={`truncate text-text hover:text-accent ${linkClass}`}
+              href={`https://x.com/${entry.screenName}`}
+              rel="noopener"
+              target="_blank"
             >
-              <a
-                className="truncate text-text hover:text-accent"
-                href={`https://x.com/${entry.screenName}`}
-                rel="noopener"
-                target="_blank"
-              >
-                <span className="font-medium">{entry.name}</span>{" "}
-                <span className="text-muted">@{entry.screenName}</span>
-              </a>
-              <Button
-                onClick={() =>
-                  send({ type: "queue/skip", userId: entry.userId })
-                }
-                size="sm"
-                title={`Never block @${entry.screenName} from this queue`}
-              >
-                Skip
-              </Button>
-            </li>
-          ))}
-        </ul>
-        {pending.length > REVIEW_LIMIT ? (
-          <Hint>
-            Showing {REVIEW_LIMIT} of {pending.length}. Filter to find others.
-          </Hint>
-        ) : null}
-      </div>
-    </details>
+              {entry.name}{" "}
+              <span className="text-muted">@{entry.screenName}</span>
+            </a>
+            <Button
+              className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+              onClick={() => send({ type: "queue/skip", userId: entry.userId })}
+              title={`Do not block @${entry.screenName}`}
+              variant="quiet"
+            >
+              Skip
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {shown.length > REVIEW_LIMIT ? (
+        <Notice>
+          {REVIEW_LIMIT} of {shown.length} shown. Filter to find others.
+        </Notice>
+      ) : null}
+    </div>
   );
 };
 
 const ListsSection = () => {
   const lists = useStorageItem(listsItem);
-  const [input, setInput] = useState(DEFAULT_LIST_URL);
+  const now = useNow(60_000);
+  const tracked = Object.values(lists).filter((list) => list.lastImportedAt);
+  // Suggest the starter list only until a list was imported.
+  const [input, setInput] = useState<string>();
+  const value = input ?? (tracked.length === 0 ? DEFAULT_LIST_URL : "");
   const [error, setError] = useState<string>();
   const inputId = useId();
 
@@ -220,22 +257,16 @@ const ListsSection = () => {
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const listId = parseListId(input);
+    const listId = parseListId(value);
     if (!listId) {
-      setError("Paste a list link like https://x.com/i/lists/123…");
+      setError("That is not an X list link.");
       return;
     }
     importList(listId);
   };
 
-  const tracked = Object.values(lists).filter((list) => list.lastImportedAt);
-
   return (
-    <Section numeral="II" title="Block lists">
-      <Hint>
-        Imports every member of an X list into the block queue. A tab opens on
-        the list and scrolls through it; accounts you follow are skipped.
-      </Hint>
+    <Section numeral="II" title="Lists">
       <form className="flex gap-2" onSubmit={onSubmit}>
         <label className="sr-only" htmlFor={inputId}>
           X list link
@@ -244,9 +275,9 @@ const ListsSection = () => {
           className={inputClass}
           id={inputId}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="https://x.com/i/lists/…"
+          placeholder="Paste an X list link"
           type="url"
-          value={input}
+          value={value}
         />
         <Button type="submit" variant="primary">
           Import
@@ -254,28 +285,31 @@ const ListsSection = () => {
       </form>
       {error ? <Notice tone="danger">{error}</Notice> : null}
       {tracked.length > 0 ? (
-        <ul className="flex flex-col">
+        <ul className="-mx-2 flex flex-col">
           {tracked.map((list) => (
             <li
-              className="flex items-center justify-between gap-3 border-line border-b py-2 text-sm"
+              className="flex items-center justify-between gap-3 rounded-stone px-2 py-1 text-sm hover:bg-surface"
               key={list.listId}
             >
-              <span className="min-w-0">
-                <a
-                  className="text-text hover:text-accent"
-                  href={list.url}
-                  rel="noopener"
-                  target="_blank"
-                >
-                  List {list.listId}
-                </a>
-                <Hint>
-                  {list.memberCount ?? 0} members ·{" "}
-                  {formatDate(list.lastImportedAt ?? 0)}
-                </Hint>
-              </span>
-              <Button onClick={() => importList(list.listId)} size="sm">
-                Re-import
+              <a
+                className={`truncate hover:text-accent ${linkClass}`}
+                href={list.url}
+                rel="noopener"
+                target="_blank"
+              >
+                List {shortId(list.listId)}
+                <span className="text-muted">
+                  {" "}
+                  · {list.memberCount ?? 0} members ·{" "}
+                  {formatAgo(list.lastImportedAt ?? now, now)}
+                </span>
+              </a>
+              <Button
+                onClick={() => importList(list.listId)}
+                title="Import again to queue new members"
+                variant="quiet"
+              >
+                Update
               </Button>
             </li>
           ))}
@@ -288,28 +322,29 @@ const ListsSection = () => {
 const ButtonsSection = () => {
   const [settings, update] = useSettings();
   return (
-    <Section numeral="III" title="Buttons on posts">
-      <Toggle
-        checked={settings.showBlockButton}
-        label="Block"
-        onChange={(showBlockButton) => update({ showBlockButton })}
-      />
-      <Toggle
-        checked={settings.showMuteButton}
-        label="Mute"
-        onChange={(showMuteButton) => update({ showMuteButton })}
-      />
-      <Toggle
-        checked={settings.showNotInterestedButton}
-        hint="X offers it on the For you timeline"
-        label="Not interested"
-        onChange={(showNotInterestedButton) =>
-          update({ showNotInterestedButton })
-        }
-      />
+    <Section numeral="III" title="Post buttons">
+      <div className="flex flex-wrap gap-2">
+        <Chip
+          checked={settings.showBlockButton}
+          label="Block"
+          onChange={(showBlockButton) => update({ showBlockButton })}
+        />
+        <Chip
+          checked={settings.showMuteButton}
+          label="Mute"
+          onChange={(showMuteButton) => update({ showMuteButton })}
+        />
+        <Chip
+          checked={settings.showNotInterestedButton}
+          label="Not interested"
+          onChange={(showNotInterestedButton) =>
+            update({ showNotInterestedButton })
+          }
+        />
+      </div>
       <Toggle
         checked={settings.hideAfterAction}
-        label="Hide the post right away"
+        label="Hide the post after an action"
         onChange={(hideAfterAction) => update({ hideAfterAction })}
       />
     </Section>
@@ -338,7 +373,7 @@ const SafetySection = () => {
     <Section numeral="IV" title="Safety">
       <Toggle
         checked={settings.skipFollowing}
-        label="Never block accounts I follow"
+        label="Skip accounts I follow"
         onChange={(skipFollowing) => update({ skipFollowing })}
       />
       <Toggle
@@ -350,12 +385,9 @@ const SafetySection = () => {
         className="flex items-center justify-between gap-4 text-sm"
         htmlFor={delayId}
       >
-        <span>
-          Seconds between blocks
-          <Hint>Slower is less likely to hit X's limits</Hint>
-        </span>
+        Seconds between blocks
         <input
-          className={`${fieldClass} w-20 text-right tabular-nums`}
+          className={`${fieldClass} w-16 py-1 text-right tabular-nums`}
           id={delayId}
           max={30}
           min={1}
@@ -370,20 +402,17 @@ const SafetySection = () => {
         />
       </label>
       <label className="flex flex-col gap-2 text-sm" htmlFor={allowlistId}>
-        <span>
-          Never block these handles
-          <Hint>One per line or separated by commas</Hint>
-        </span>
+        Never block
         <textarea
           className={`${inputClass} resize-y`}
           id={allowlistId}
           onBlur={saveAllowlist}
           onChange={(event) => setAllowlist(event.target.value)}
-          placeholder="@friend"
-          rows={3}
+          placeholder="@handle, @handle"
+          rows={2}
           value={
             allowlist ??
-            settings.allowlist.map((handle) => `@${handle}`).join("\n")
+            settings.allowlist.map((handle) => `@${handle}`).join(", ")
           }
         />
       </label>
@@ -392,15 +421,12 @@ const SafetySection = () => {
 };
 
 export const App = () => (
-  <main className="w-[380px] bg-canvas font-sans text-text antialiased">
-    <header className="fluted flex flex-col items-center gap-1 px-5 pt-5 pb-3 text-text">
+  <main className="w-[380px] bg-canvas pb-3 font-sans text-text antialiased">
+    <header className="flex flex-col items-center px-5 pt-5 pb-2">
       <h1 className="inscription pl-[0.3em] font-semibold text-2xl tracking-[0.3em]">
         Lustre
       </h1>
-      <p className="text-[10px] text-muted uppercase tracking-[0.28em]">
-        Purify your feeds
-      </p>
-      <div aria-hidden="true" className="meander mt-2 w-full text-accent/60" />
+      <div aria-hidden="true" className="meander mt-3 w-full text-accent/50" />
     </header>
     <QueueSection />
     <ListsSection />

@@ -25,6 +25,16 @@ const readString = (source: unknown, key: string): string | undefined => {
 const readBoolean = (source: unknown, key: string): boolean =>
   isObject(source) && source[key] === true;
 
+const EMOJI =
+  /\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|\u{FE0F}|\u{200D}|\u{20E3}/gu;
+
+/** Removes emojis from display text and collapses the spaces they leave. */
+export const stripEmoji = (text: string): string =>
+  text
+    .replace(EMOJI, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
 /**
  * Reads one GraphQL `User` result. X moved fields between `legacy`, `core`
  * and `relationship_perspectives` over time, so each field is read from every
@@ -46,7 +56,10 @@ const toUser = (result: JsonObject): XUser | undefined => {
       readBoolean(perspectives, "following") ||
       readBoolean(legacy, "following"),
     id,
-    name: readString(core, "name") ?? readString(legacy, "name") ?? screenName,
+    name:
+      stripEmoji(
+        readString(core, "name") ?? readString(legacy, "name") ?? ""
+      ) || screenName,
     screenName,
   };
 };

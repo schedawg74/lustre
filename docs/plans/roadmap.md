@@ -10,7 +10,7 @@ Next steps on X:
 
 - Auto-hide posts from accounts that are still in the queue, before they are
   blocked.
-- Keyword and pattern rules ("🧵 10 AI tools…", engagement bait) that queue
+- Keyword and pattern rules ("10 AI tools that…" threads, engagement bait) that queue
   the author for review.
 - Export and import the queue and allowlist as JSON.
 

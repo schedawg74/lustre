@@ -11,12 +11,11 @@
   --lustre-line: #e7e1d4;
   --lustre-text: #1f1c17;
   --lustre-muted: #6b6458;
-  --lustre-accent: #a9824a;
+  --lustre-accent: #8c6a39;
   --lustre-on-accent: #faf8f3;
   --lustre-danger: #b4533a;
   --lustre-sans:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --lustre-display: "Cinzel Variable", "Trajan Pro", Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -120,21 +119,22 @@
   font: 14px / 1.35 var(--lustre-sans);
   color: var(--lustre-canvas);
   background: var(--lustre-text);
-  border-top: 2px solid var(--lustre-accent);
+  border: 1px solid #2e2b24;
+  border-top: 2px solid #c9a46a;
   border-radius: 3px;
   box-shadow: 0 8px 24px rgba(20, 19, 15, 0.28);
   transform: translateX(-50%);
 }
 
 .lustre-toast-error {
-  border-top-color: var(--lustre-danger);
+  border-top-color: #d06a50;
 }
 
 .lustre-toast button {
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: var(--lustre-accent);
+  color: #c9a46a;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   cursor: pointer;
@@ -152,15 +152,14 @@
   font: 14px / 1.45 var(--lustre-sans);
   color: var(--lustre-text);
   background: var(--lustre-canvas);
-  border: 1px solid var(--lustre-line);
-  border-top: 3px double var(--lustre-accent);
+  border-top: 2px solid var(--lustre-accent);
   border-radius: 3px;
   box-shadow: 0 12px 32px rgba(20, 19, 15, 0.22);
 }
 
 .lustre-panel strong {
-  font-family: var(--lustre-display);
-  font-weight: 600;
+  font: 600 12px / 1.2 var(--lustre-sans);
+  color: var(--lustre-accent);
   text-transform: uppercase;
   letter-spacing: 0.24em;
 }
@@ -203,4 +202,10 @@
   color: var(--lustre-on-accent);
   background: var(--lustre-accent);
   border-color: var(--lustre-accent);
+}
+
+.lustre-panel button:focus-visible,
+.lustre-toast button:focus-visible {
+  outline: 2px solid #c9a46a;
+  outline-offset: 2px;
 }

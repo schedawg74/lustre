@@ -4,6 +4,7 @@ import {
   graphqlOperationName,
   graphqlVariables,
   parseListId,
+  stripEmoji,
 } from "./users";
 
 const userResult = (
@@ -109,6 +110,24 @@ describe("extractUsers", () => {
   it("returns nothing for non-objects", () => {
     expect(extractUsers(null)).toEqual([]);
     expect(extractUsers("text")).toEqual([]);
+  });
+});
+
+describe("stripEmoji", () => {
+  it("removes emojis, modifiers and joiners, and keeps other text", () => {
+    expect(stripEmoji("Thread Machine \u{1F9F5}")).toBe("Thread Machine");
+    expect(
+      stripEmoji("\u{1F468}\u{1F3FD}\u200D\u{1F4BB} Dev \u{1F1E9}\u{1F1EA} Guy")
+    ).toBe("Dev Guy");
+    expect(stripEmoji("Caf\u00E9 #1 @ 10:00")).toBe("Caf\u00E9 #1 @ 10:00");
+  });
+
+  it("falls back to the handle when the name is only emojis", () => {
+    const [user] = extractUsers({
+      ...userResult("9", "fire", {}),
+      core: { name: "\u{1F525}\u{1F525}", screen_name: "fire" },
+    });
+    expect(user?.name).toBe("fire");
   });
 });
 

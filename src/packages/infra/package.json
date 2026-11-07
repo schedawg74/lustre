@@ -1,0 +1,20 @@
+{
+  "name": "@lustre/infra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pulumi/hcloud": "1.43.4",
+    "@pulumi/pulumi": "3.274.1"
+  },
+  "devDependencies": {
+    "@lustre/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@lustre/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "dev": "DATABASE_PATH=.data/lustre.db MIGRATIONS_FOLDER=../../packages/db/migrations tsx watch src/index.ts",
+    "start": "node dist/index.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lustre/api": "workspace:*",
+    "@lustre/db": "workspace:*",
+    "cors": "2.8.6",
+    "drizzle-orm": "catalog:",
+    "express": "5.3.0",
+    "express-rate-limit": "8.7.3",
+    "helmet": "8.3.0",
+    "pino": "10.4.0",
+    "pino-http": "11.0.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@lustre/typescript-config": "workspace:*",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "@types/node": "catalog:",
+    "@types/supertest": "7.2.1",
+    "supertest": "7.3.1",
+    "tsdown": "0.23.7",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,35 +1,18 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-
-/** A numbered section, headed like a carved inscription: "II  Lists". */
-export const Section = ({
-  numeral,
-  title,
-  aside,
-  children,
-}: {
-  numeral: string;
-  title: string;
-  aside?: ReactNode;
-  children: ReactNode;
-}) => (
-  <section className="flex flex-col gap-3 px-5 py-3">
-    <header className="flex items-baseline justify-between gap-3">
-      <h2 className="inscription flex items-baseline gap-2 text-[12px] text-text">
-        <span className="text-accent">{numeral}</span>
-        <span>{title}</span>
-      </h2>
-      {aside}
-    </header>
-    {children}
-  </section>
-);
+import type { IconName } from "@lustre/icons/icons";
+import { Icon } from "@lustre/icons/react";
+import {
+  type ButtonHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  useId,
+} from "react";
 
 const BUTTON_VARIANTS = {
   primary:
     "border border-text bg-text text-canvas hover:enabled:border-accent hover:enabled:bg-accent hover:enabled:text-on-accent",
   quiet: "text-muted hover:enabled:text-accent",
   secondary:
-    "border border-line text-text hover:enabled:border-accent hover:enabled:text-accent",
+    "border border-control text-text hover:enabled:border-accent hover:enabled:text-accent",
 } as const;
 
 export const Button = ({
@@ -40,10 +23,15 @@ export const Button = ({
   variant?: keyof typeof BUTTON_VARIANTS;
 }) => (
   <button
-    className={`shrink-0 cursor-pointer rounded-stone font-medium text-[11px] uppercase tracking-[0.14em] transition-colors focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40 ${variant === "quiet" ? "px-1 py-1" : "px-4 py-2"} ${BUTTON_VARIANTS[variant]} ${className}`}
+    className={`shrink-0 cursor-pointer rounded-stone font-medium text-[11px] uppercase tracking-[0.14em] transition-colors focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40 ${variant === "quiet" ? "px-1 py-1" : "px-3 py-1.5"} ${BUTTON_VARIANTS[variant]} ${className}`}
     type="button"
     {...props}
   />
+);
+
+/** A small heading inside a tab, set like a carved inscription. */
+export const Heading = ({ children }: { children: ReactNode }) => (
+  <h2 className="inscription text-[11px] text-muted">{children}</h2>
 );
 
 export const Hint = ({ children }: { children: ReactNode }) => (
@@ -80,19 +68,28 @@ export const Toggle = ({
 /** A toggle drawn as a chip, for short options that sit side by side. */
 export const Chip = ({
   label,
+  icon,
   checked,
   onChange,
 }: {
   label: string;
+  icon?: IconName;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) => (
   <button
     aria-pressed={checked}
-    className={`flex cursor-pointer items-center gap-2 rounded-stone px-3 py-1.5 text-xs ring-1 ring-inset transition-colors focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${checked ? "text-text ring-accent before:size-1.5 before:bg-accent" : "text-muted ring-control hover:text-text"}`}
+    className={`flex cursor-pointer items-center gap-2 rounded-stone px-3 py-1.5 text-xs ring-1 ring-inset transition-colors focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${checked ? "text-text ring-accent" : "text-muted ring-control hover:text-text"}`}
     onClick={() => onChange(!checked)}
     type="button"
   >
+    {icon ? (
+      <Icon
+        className={checked ? "text-accent" : "text-muted"}
+        name={icon}
+        size={14}
+      />
+    ) : null}
     {label}
   </button>
 );
@@ -106,37 +103,89 @@ export const Notice = ({
 }) => (
   <p
     className={`text-xs leading-snug ${tone === "danger" ? "text-danger" : "text-muted"}`}
+    role={tone === "danger" ? "alert" : undefined}
   >
     {children}
   </p>
-);
-
-/** One count: a large inscription numeral over a small label. */
-export const Stat = ({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: string;
-}) => (
-  <div className="flex flex-col-reverse items-center">
-    <dt className="text-[10px] text-muted uppercase tracking-[0.16em]">
-      {label}
-    </dt>
-    <dd className={`font-display text-2xl tabular-nums leading-tight ${tone}`}>
-      {value}
-    </dd>
-  </div>
 );
 
 /** Border, colors and focus ring of a text field, without a width. */
 export const fieldClass =
   "min-w-0 rounded-stone border border-control bg-canvas px-3 py-2 text-sm text-text placeholder:text-muted focus-visible:-outline-offset-1 focus-visible:outline-2 focus-visible:outline-accent";
 
+export const inputClass = `w-full ${fieldClass}`;
+
 /** Focus ring for links. */
 export const linkClass =
   "rounded-stone focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
 
-export const inputClass = `w-full ${fieldClass}`;
+export type TabItem<T extends string> = {
+  id: T;
+  label: string;
+  icon: IconName;
+  badge?: number;
+};
+
+/**
+ * The popup's menu: a row of tabs with icons. Arrow keys move between tabs,
+ * as the ARIA tabs pattern expects.
+ */
+export const Tabs = <T extends string>({
+  items,
+  active,
+  onChange,
+  panelId,
+}: {
+  items: readonly TabItem<T>[];
+  active: T;
+  onChange: (id: T) => void;
+  panelId: string;
+}) => {
+  const baseId = useId();
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
+    if (!step) {
+      return;
+    }
+    event.preventDefault();
+    const index = items.findIndex((item) => item.id === active);
+    const next = items[(index + step + items.length) % items.length];
+    if (next) {
+      onChange(next.id);
+      document.getElementById(`${baseId}-${next.id}`)?.focus();
+    }
+  };
+  return (
+    <div
+      aria-label="Sections"
+      className="flex gap-1 px-3"
+      onKeyDown={onKeyDown}
+      role="tablist"
+    >
+      {items.map((item) => {
+        const selected = item.id === active;
+        return (
+          <button
+            aria-controls={panelId}
+            aria-selected={selected}
+            className={`relative flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[11px] uppercase tracking-[0.14em] transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2 ${selected ? "text-text after:bg-accent" : "text-muted hover:text-text"}`}
+            id={`${baseId}-${item.id}`}
+            key={item.id}
+            onClick={() => onChange(item.id)}
+            role="tab"
+            tabIndex={selected ? 0 : -1}
+            type="button"
+          >
+            <Icon name={item.icon} size={16} />
+            {item.label}
+            {item.badge ? (
+              <span className="text-[10px] text-accent tabular-nums">
+                {item.badge}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+};

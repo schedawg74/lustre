@@ -2,10 +2,12 @@ import type { BlockQueue, EntryStatus } from "@lustre/block-queue/queue";
 import { parseListId } from "@lustre/x-client/users";
 import { type FormEvent, useId, useMemo, useState } from "react";
 import { send } from "@/lib/messages";
+import { isImporting, type PendingImport } from "@/lib/pending-imports";
 import {
   DEFAULT_LIST_URL,
   DEFAULT_SETTINGS,
   listsItem,
+  pendingImportsItem,
   queueItem,
   runnerItem,
   settingsItem,
@@ -70,11 +72,14 @@ const ListRow = ({
   list,
   progress,
   now,
+  importing,
   onUpdate,
 }: {
   list: TrackedList;
   progress: ListProgress;
   now: number;
+  /** Set while the list imports in its background tab. */
+  importing?: PendingImport;
   onUpdate: () => void;
 }) => {
   // Removing asks once more in place, instead of a browser dialog.
@@ -94,8 +99,16 @@ const ListRow = ({
           ) : null}
         </a>
         <Hint>
-          {describeProgress(progress)} · updated{" "}
-          {formatAgo(list.lastImportedAt ?? now, now)}
+          {importing ? (
+            <span aria-live="polite" className="text-accent">
+              Importing… {formatCount(importing.found ?? 0)} found
+            </span>
+          ) : (
+            <>
+              {describeProgress(progress)} · updated{" "}
+              {formatAgo(list.lastImportedAt ?? now, now)}
+            </>
+          )}
         </Hint>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -131,13 +144,25 @@ const ListRow = ({
           </>
         ) : (
           <>
-            <Button
-              onClick={onUpdate}
-              title="Import again to queue new members"
-              variant="quiet"
-            >
-              Update
-            </Button>
+            {importing ? (
+              <Button
+                onClick={() =>
+                  send({ listId: list.listId, type: "import/show" })
+                }
+                title="Show the tab that imports this list"
+                variant="quiet"
+              >
+                Show
+              </Button>
+            ) : (
+              <Button
+                onClick={onUpdate}
+                title="Import again to queue new members"
+                variant="quiet"
+              >
+                Update
+              </Button>
+            )}
             <Button
               className="hidden group-focus-within:block group-hover:block"
               onClick={() => setConfirming(true)}
@@ -161,8 +186,11 @@ export const ListsTab = () => {
   const now = useNow(60_000);
   const blocksAtOnce =
     runner.status === "running" || settings.autoStartAfterImport;
+  const imports = useStorageItem(pendingImportsItem);
   const tracked = Object.values(lists)
-    .filter((list) => list.lastImportedAt)
+    .filter(
+      (list) => list.lastImportedAt || isImporting(imports, list.listId, now)
+    )
     .sort((a, b) => (b.lastImportedAt ?? 0) - (a.lastImportedAt ?? 0));
   const progress = useMemo(() => progressByList(queue), [queue]);
   const firstRun = tracked.length === 0;
@@ -174,8 +202,9 @@ export const ListsTab = () => {
 
   const importList = async (listId: string) => {
     setError(undefined);
+    setInput("");
+    // The list imports in a background tab; its row shows the progress.
     await send({ listId, type: "import/start" });
-    window.close();
   };
 
   const onSubmit = (event: FormEvent) => {
@@ -225,6 +254,11 @@ export const ListsTab = () => {
         <ul className="-mx-2 flex flex-col">
           {tracked.map((list) => (
             <ListRow
+              importing={
+                isImporting(imports, list.listId, now)
+                  ? imports[list.listId]
+                  : undefined
+              }
               key={list.listId}
               list={list}
               now={now}

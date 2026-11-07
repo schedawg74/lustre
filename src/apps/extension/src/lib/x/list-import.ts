@@ -75,11 +75,20 @@ const finishMessage = (added: number, skipped: number) => {
     : `${added} queued.`;
 };
 
+/** Without a first page by then, fall back to scrolling. */
+const FIRST_PAGE_TIMEOUT_MS = 15_000;
+
+type Mode = "waiting" | "paging" | "scrolling";
+
 /**
- * Collects every member of a list from the list's members page. It scrolls
- * the page so that x.com loads the next page of members, and reads each page
- * from x.com's own API responses (see x-bridge.content.ts). When no new
- * members arrive for a while, it hands the members to the block queue.
+ * Collects every member of a list on the list's members page, which the
+ * extension opens in a background tab.
+ *
+ * x.com loads the first page of members itself; the bridge forwards that
+ * response and its request. The import then repeats the request with the
+ * next cursor until the last page, so it does not need the page to scroll
+ * or even be visible. If x.com refuses the repeated request, the import
+ * falls back to scrolling the members list, which needs the tab in front.
  */
 const runImport = (
   ctx: ContentScriptContext,
@@ -87,25 +96,26 @@ const runImport = (
   listId: string
 ) => {
   const members = new Map<string, XUser>();
-  let lastGrowthAt = Date.now();
+  const startedAt = Date.now();
+  let lastGrowthAt = startedAt;
   let reachedEnd = false;
   let finished = false;
+  let mode: Mode = "waiting";
+  let unsubscribe: () => void = () => undefined;
   const panel = createPanel();
 
-  const unsubscribe = session.onListMembers((page) => {
-    if (page.listId !== listId) {
-      return;
-    }
-    if (page.users.length === 0) {
-      reachedEnd = true;
-    }
-    for (const user of page.users) {
+  const add = (users: readonly XUser[]) => {
+    for (const user of users) {
       if (!members.has(user.id)) {
         members.set(user.id, user);
         lastGrowthAt = Date.now();
       }
     }
-  });
+    panel.setProgress(` ${members.size}`);
+    send({ found: members.size, listId, type: "import/progress" }).catch(
+      () => undefined
+    );
+  };
 
   const stop = () => {
     finished = true;
@@ -114,6 +124,9 @@ const runImport = (
   };
 
   const finish = async () => {
+    if (finished) {
+      return;
+    }
     stop();
     panel.setText(`Adding ${members.size} members to the queue…`);
     panel.setButtons([]);
@@ -132,36 +145,36 @@ const runImport = (
       panel.setButtons([{ label: "Close", run: () => panel.root.remove() }]);
       return;
     }
+    // The background worker closes this tab when the popup opened it.
     panel.setText(finishMessage(summary.added, skipped));
-    panel.setButtons([
-      ...(summary.added > 0
-        ? [
-            {
-              label: "Start blocking",
-              primary: true,
-              run: async () => {
-                await send({
-                  patch: { lastError: null, status: "running" },
-                  type: "runner/update",
-                });
-                panel.setText("Blocking. Keep an x.com tab open.");
-                panel.setButtons([
-                  { label: "Close", run: () => panel.root.remove() },
-                ]);
-              },
-            },
-          ]
-        : []),
-      { label: "Close", run: () => panel.root.remove() },
-    ]);
+    panel.setButtons([{ label: "Close", run: () => panel.root.remove() }]);
   };
 
-  const tick = () => {
-    if (finished) {
-      return;
+  const pageThrough = async (firstCursor: string) => {
+    mode = "paging";
+    const seen = new Set<string>();
+    let cursor: string | undefined = firstCursor;
+    try {
+      while (cursor && !seen.has(cursor) && !finished) {
+        seen.add(cursor);
+        const page = await session.fetchMembersPage(listId, cursor);
+        add(page.users);
+        if (page.users.length === 0) {
+          break;
+        }
+        cursor = page.nextCursor;
+      }
+      await finish();
+    } catch {
+      // x.com refused the repeated request: scroll like a person would.
+      mode = "scrolling";
+      lastGrowthAt = Date.now();
+      panel.setText("Collecting members. Keep this tab in front…");
     }
+  };
+
+  const scroll = () => {
     const idleFor = Date.now() - lastGrowthAt;
-    panel.setProgress(` ${members.size}`);
     if (
       (reachedEnd && idleFor > SCROLL_EVERY_MS * 2) ||
       idleFor > IDLE_FINISH_MS
@@ -180,6 +193,18 @@ const runImport = (
     }
   };
 
+  const tick = () => {
+    if (finished) {
+      return;
+    }
+    if (mode === "waiting" && Date.now() - startedAt > FIRST_PAGE_TIMEOUT_MS) {
+      mode = "scrolling";
+    }
+    if (mode === "scrolling") {
+      scroll();
+    }
+  };
+
   panel.setText("Collecting members…");
   panel.setButtons([
     { label: "Finish", primary: true, run: () => finish() },
@@ -193,7 +218,26 @@ const runImport = (
     },
   ]);
   const timer = ctx.setInterval(tick, SCROLL_EVERY_MS);
-  tick();
+  // Subscribe last: the session replays pages that already arrived, and the
+  // first one may finish the import at once.
+  unsubscribe = session.onListMembers((page) => {
+    if (finished || page.listId !== listId) {
+      return;
+    }
+    if (page.users.length === 0) {
+      reachedEnd = true;
+    }
+    add(page.users);
+    if (mode !== "waiting") {
+      return;
+    }
+    if (page.nextCursor) {
+      pageThrough(page.nextCursor);
+    } else {
+      // The whole list fits on the first page.
+      finish();
+    }
+  });
 };
 
 /** Starts an import when the popup asked for one and this tab shows its list. */

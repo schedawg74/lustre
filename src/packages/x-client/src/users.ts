@@ -139,6 +139,47 @@ export const graphqlOperationName = (url: string): string | undefined => {
 
 const GRAPHQL_PATH = /\/i\/api\/graphql\/[^/]+\/([A-Za-z]+)/;
 
+/**
+ * The cursor of the next page in a timeline response (the "Bottom" cursor
+ * entry), or undefined on the last page.
+ */
+export const extractBottomCursor = (payload: unknown): string | undefined => {
+  const stack: unknown[] = [payload];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (Array.isArray(node)) {
+      stack.push(...node);
+      continue;
+    }
+    if (!isObject(node)) {
+      continue;
+    }
+    const value = readString(node, "value");
+    if (node.cursorType === "Bottom" && value) {
+      return value;
+    }
+    stack.push(...Object.values(node));
+  }
+};
+
+/**
+ * The same GraphQL GET request with some variables replaced, for example
+ * the cursor of the next page. Other query parameters (features, field
+ * toggles) stay as x.com sent them.
+ */
+export const withGraphqlVariables = (
+  url: string,
+  patch: Record<string, unknown>
+): string => {
+  const parsed = new URL(url, "https://x.com");
+  const variables = graphqlVariables(url) ?? {};
+  parsed.searchParams.set(
+    "variables",
+    JSON.stringify({ ...variables, ...patch })
+  );
+  return parsed.toString();
+};
+
 /** The `variables` query parameter of a GraphQL GET request, parsed. */
 export const graphqlVariables = (
   url: string

@@ -49,10 +49,9 @@ The x.com API calls run in the content script, not in the background worker: the
 
 List import:
 
-1. Popup sends `import/start`. The background stores `pendingImport` and opens `https://x.com/i/lists/<id>/members`.
-2. The content script sees the matching path and request, shows a panel, and scrolls the last `UserCell` into view every 1.2 s.
-3. x.com loads the next members page; the bridge forwards the response; `session.ts` extracts users and keys them by the `listId` in the request variables.
-4. After an empty page, or 12 s without new members, the content script sends `import/finish`. The background adds the members to the queue with `addCandidates` and returns the counts.
+1. Popup sends `import/start`. The background records the import in `pendingImports` (per list, with a time to live) and opens `https://x.com/i/lists/<id>/members` in a background tab. The popup stays open; the list's row shows "Importing… N found" and a Show button.
+2. In that tab the content script waits for x.com's first members page, then repeats that request with each next cursor until the last page (see [X platform](x-platform.md#how-list-import-pages-through-a-list)); it sends `import/progress` after each page. If x.com refuses, it falls back to scrolling.
+3. It sends `import/finish`. The background adds the members to the queue with `addCandidates`, ends the import and closes the tab.
 
 Bulk blocking:
 

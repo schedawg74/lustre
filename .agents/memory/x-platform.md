@@ -32,18 +32,28 @@ Errors are mapped in `toError`:
 | 5xx, network error | Retries the account up to 3 times |
 | Other 4xx | Marks the account failed; **Retry failed** in the popup re-queues |
 
-## Why list import scrolls instead of calling ListMembers
+## How list import pages through a list
 
 GraphQL query ids change with every x.com deploy, the `features` parameter
 must match what the server expects, and some operations need an
 `x-client-transaction-id` header that only x.com's own code can generate.
-Scrolling the members page lets x.com make those requests itself. The page
-bridge (`x-bridge.content.ts`) reads the responses as they arrive. It patches
-`XMLHttpRequest` and `fetch` in the page world but never changes a request or
-a response.
+So Lustre never builds a ListMembers request from scratch:
 
-The import finishes when a page comes back with no members, or when no new
-members arrive for 12 seconds.
+1. The members page (opened in a background tab) makes x.com load the first
+   page itself. The page bridge (`x-bridge.content.ts`) forwards that
+   response and the headers of its request. It patches `XMLHttpRequest` and
+   `fetch` in the page world but never changes a request or a response.
+2. The content script repeats exactly that request with the next page's
+   `cursor` (the "Bottom" cursor entry) until a page has no members
+   (`session.fetchMembersPage`, `withGraphqlVariables`). This works in a
+   background tab, where x.com would not load more members on its own.
+3. If x.com refuses a repeated request (for example because the reused
+   transaction id is rejected), the import falls back to scrolling the
+   members list, which needs the tab in front; the panel says so. The
+   fallback finishes after an empty page or 12 s without new members.
+
+Not verified against live x.com: whether x.com accepts the repeated request
+with the reused headers. The e2e test proves the paging logic with a fake.
 
 ## DOM selectors
 

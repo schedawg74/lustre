@@ -14,6 +14,11 @@ export type BridgeMessage =
       type: "graphql";
       operation: string;
       url: string;
+      /**
+       * The headers x.com sent with this request. The content script repeats
+       * the request for the next pages; they never leave the tab.
+       */
+      headers: Record<string, string>;
       payload: unknown;
     };
 
@@ -34,6 +39,8 @@ export const isBridgeMessage = (value: unknown): value is BridgeMessage => {
   return (
     message.type === "graphql" &&
     typeof message.operation === "string" &&
-    typeof message.url === "string"
+    typeof message.url === "string" &&
+    typeof message.headers === "object" &&
+    message.headers !== null
   );
 };

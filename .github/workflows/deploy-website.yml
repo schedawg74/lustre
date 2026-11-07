@@ -1,0 +1,130 @@
+name: Deploy website
+# Runs CI, builds the static website (@lustre/website), and ships it to the
+# Hetzner host over Tailscale SSH as a new release folder. The host script
+# /data/app/bin/deploy-website (installed by deploy-server.yml) switches the
+# `current` symlink in one rename and keeps the newest 5 releases. A failed
+# check switches back to the previous release. See
+# .agents/memory/infrastructure.md.
+#
+#   gh workflow run deploy-website.yml --ref main -f confirm=main
+run-name: deploy website ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Repeat the branch or tag name to deploy it to production.
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# One lock for every job that changes production.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  confirm:
+    name: Check the confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          CONFIRM: ${{ inputs.confirm }}
+          REF: ${{ github.ref_name }}
+        run: |
+          if [ "$CONFIRM" != "$REF" ]; then
+            echo "::error::A production deploy needs confirm=$REF"
+            exit 1
+          fi
+
+  ci:
+    name: CI
+    needs: confirm
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  build:
+    name: Build the website
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @lustre/website build
+      - name: Pack the site
+        run: |
+          test -f src/apps/website/dist/index.html
+          tar -C src/apps/website/dist -czf website.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website
+          path: website.tar.gz
+          retention-days: 7
+
+  deploy:
+    name: Switch the host to the new release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      HOST: ${{ vars.LUSTRE_TAILSCALE_HOST }}
+      DOMAIN: ${{ vars.LUSTRE_DOMAIN }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: website
+
+      - name: Name the release
+        id: release
+        run: echo "id=$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      # An ephemeral tailnet node with tag:ci. The tailnet policy must allow
+      # tag:ci to use Tailscale SSH as `deploy` on the host's tag.
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: ${{ vars.LUSTRE_TAILSCALE_HOST }}
+
+      - name: Upload and switch to the release
+        id: deploy
+        env:
+          RELEASE: ${{ steps.release.outputs.id }}
+        run: |
+          previous="$(tailscale ssh "deploy@$HOST" 'readlink /data/www/current || true')"
+          echo "previous=${previous#releases/}" >> "$GITHUB_OUTPUT"
+          tailscale ssh "deploy@$HOST" /data/app/bin/deploy-website "$RELEASE" < website.tar.gz
+
+      - name: Check the website
+        env:
+          RELEASE: ${{ steps.release.outputs.id }}
+        run: |
+          for _ in $(seq 20); do
+            if curl -fsS --max-time 5 "https://$DOMAIN/release.json" | grep -qF "\"release\":\"$RELEASE\"" &&
+              curl -fsS --max-time 5 -o /dev/null "https://$DOMAIN/"; then
+              echo "Deployed website release \`$RELEASE\` to https://$DOMAIN" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::https://$DOMAIN does not serve release $RELEASE"
+          exit 1
+
+      - name: Switch back to the previous release
+        if: failure() && steps.deploy.outcome == 'success' && steps.deploy.outputs.previous != ''
+        env:
+          PREVIOUS: ${{ steps.deploy.outputs.previous }}
+        run: tailscale ssh "deploy@$HOST" /data/app/bin/deploy-website --rollback "$PREVIOUS"

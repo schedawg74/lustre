@@ -1,7 +1,8 @@
 name: Deploy server
-# Runs CI, builds the server image for Arm and x86, pushes it to GHCR, and
-# starts it on the Hetzner host over Tailscale SSH. See
-# .agents/memory/infrastructure.md.
+# Runs CI, builds the server image for Arm and x86, pushes it to GHCR, copies
+# the host runtime files (src/packages/infra/host: compose.yaml, Caddyfile,
+# litestream.yml, deploy scripts) to the Hetzner host over Tailscale SSH, and
+# starts the image. See .agents/memory/infrastructure.md.
 #
 #   gh workflow run deploy-server.yml --ref main -f confirm=main
 run-name: deploy server ${{ github.ref_name }}
@@ -83,6 +84,10 @@ jobs:
     timeout-minutes: 15
     environment: production
     steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
       # An ephemeral tailnet node with tag:ci. The tailnet policy must allow
       # tag:ci to use Tailscale SSH as `deploy` on the host's tag.
       - uses: tailscale/github-action@v4
@@ -92,16 +97,25 @@ jobs:
           tags: tag:ci
           ping: ${{ vars.LUSTRE_TAILSCALE_HOST }}
 
-      # deploy.sh writes the tag to .env, then runs
-      # `docker compose pull && docker compose up -d`.
+      - name: Copy the runtime files to the host
+        env:
+          HOST: ${{ vars.LUSTRE_TAILSCALE_HOST }}
+        run: |
+          tar -C src/packages/infra/host -czf - . |
+            tailscale ssh "deploy@$HOST" \
+              'rm -rf /data/app/incoming && mkdir /data/app/incoming && tar -xzf - -C /data/app/incoming'
+
+      # deploy-server checks the new files (docker compose config, caddy
+      # validate), installs them in /data/app, writes the tag to .env, runs
+      # `docker compose pull && docker compose up -d`, and reloads Caddy.
       - name: Pull and start the image
         env:
           HOST: ${{ vars.LUSTRE_TAILSCALE_HOST }}
-        run: tailscale ssh "deploy@$HOST" /opt/lustre/deploy.sh "$GITHUB_SHA"
+        run: tailscale ssh "deploy@$HOST" /data/app/incoming/bin/deploy-server "$GITHUB_SHA"
 
       - name: Check the health endpoint
         env:
           DOMAIN: ${{ vars.LUSTRE_DOMAIN }}
         run: |
-          curl -fsS --retry 10 --retry-all-errors --retry-delay 3 "https://$DOMAIN/health"
-          echo "Deployed \`$IMAGE:$GITHUB_SHA\` to https://$DOMAIN" >> "$GITHUB_STEP_SUMMARY"
+          curl -fsS --retry 10 --retry-all-errors --retry-delay 3 "https://api.$DOMAIN/health"
+          echo "Deployed \`$IMAGE:$GITHUB_SHA\` to https://api.$DOMAIN" >> "$GITHUB_STEP_SUMMARY"

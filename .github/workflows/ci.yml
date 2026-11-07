@@ -40,3 +40,28 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build --file src/apps/server/Dockerfile --tag lustre-server:ci .
+
+  # The runtime files that deploy-server.yml copies to the host, and the
+  # workflows. Cloud-init writes /etc/lustre on the host; the job writes test values.
+  host:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/packages/infra/host
+    steps:
+      - uses: actions/checkout@v5
+      - name: Write test values for /etc/lustre
+        run: |
+          sudo install -d /etc/lustre
+          printf 'LUSTRE_DOMAIN=lustre.example.com\nLUSTRE_TRUSTED_PROXIES=173.245.48.0/20 2400:cb00::/32\n' | sudo tee /etc/lustre/caddy.env
+          printf 'LITESTREAM_BUCKET=b\nLITESTREAM_ENDPOINT=https://nbg1.your-objectstorage.com\nLITESTREAM_REGION=nbg1\n' | sudo tee /etc/lustre/litestream.env
+      - run: SERVER_TAG=ci docker compose config --quiet
+      - name: Validate the Caddyfile
+        run: |
+          docker run --rm --env-file /etc/lustre/caddy.env -v "$PWD/caddy:/etc/caddy:ro" \
+            "$(SERVER_TAG=ci docker compose config --images | grep '^caddy:')" \
+            caddy validate --config /etc/caddy/Caddyfile
+      - run: shellcheck bin/* ../scripts/*.sh
+      - name: actionlint
+        working-directory: .
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color

@@ -6,10 +6,10 @@ Read the affected package's manifest before selecting a command.
 
 | Area | Command | Prerequisites / limits |
 | --- | --- | --- |
-| Unit | `pnpm test` | Vitest over `src/**/*.test.ts` (root `vitest.config.ts`). Packages, the server, and the infra config; `fetch` is mocked |
-| Types | `pnpm typecheck` | Turborepo. The extension runs `wxt prepare` first to generate `.wxt/` types |
+| Unit | `pnpm test` | Vitest over `src/**/*.test.ts` (root `vitest.config.ts`). Packages, the server, the infra config, and the website's `stats.ts`; `fetch` is mocked |
+| Types | `pnpm typecheck` | Turborepo. The extension runs `wxt prepare` first to generate `.wxt/` types; the website runs `astro check` |
 | Lint | `pnpm lint` | Read-only Biome check. `pnpm format` applies fixes |
-| Build | `pnpm build` | Chrome MV3 and Firefox MV3 into `src/apps/extension/.output/`; the server into `src/apps/server/dist/` |
+| Build | `pnpm build` | Chrome MV3 and Firefox MV3 into `src/apps/extension/.output/`; the server into `src/apps/server/dist/`; the website into `src/apps/website/dist/` |
 | Server image | `docker build -f src/apps/server/Dockerfile .` | Docker. Run it with `docker compose up --build` (port 3000) |
 | End to end | `pnpm test:e2e` | Needs `pnpm build` first and Playwright Chromium (`pnpm --filter @lustre/extension exec playwright install chromium`). Headless |
 

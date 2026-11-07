@@ -105,7 +105,9 @@ src/
   apps/
     extension/        WXT browser extension (React popup, content scripts)
     server/           Blocklist API (Express 5, SQLite), Dockerfile
+    website/          Static Astro landing page (React island, Tailwind theme)
   packages/
+    icons/            Meandros icon set and brand icons
     x-client/         X web API calls and GraphQL response parsing
     block-queue/      Block queue logic (no browser APIs, unit-tested)
     api/              Blocklist API schemas (Zod) and typed fetch client
@@ -124,7 +126,8 @@ docs/plans/           Planned work
 | --- | --- |
 | `pnpm dev` | WXT dev mode for Chrome with hot reload |
 | `pnpm dev:server` | Blocklist server with reload on change |
-| `pnpm build` | Production builds for Chrome (MV3) and Firefox (MV3), and the server bundle |
+| `pnpm dev:website` | Astro dev server for the landing page |
+| `pnpm build` | Production builds for Chrome (MV3) and Firefox (MV3), the server bundle, and the static website in `src/apps/website/dist/` |
 | `pnpm zip` / `pnpm zip:firefox` | Store-ready zip files |
 | `pnpm test` | Vitest unit tests (packages, server against in-memory SQLite, infra config) |
 | `pnpm test:e2e` | Chromium smoke test of the built extension against a fake x.com |

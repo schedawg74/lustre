@@ -12,6 +12,7 @@ The notes describe repository state on 2026-11-07 (v0.1, X only, blocklist serve
 | Change the blocklist server, its API, or its database | [Server](server.md) |
 | Change Hetzner resources, Caddy, server or website deploys, or backups | [Infrastructure](infrastructure.md) |
 | Select and run tests | [Testing](testing.md) |
+| Change the landing page | [Website](website.md) |
 | Select models or configure coding agents | [Agent workflow](agent-workflow.md) |
 
 Planned work stays in [docs/plans](../../docs/plans/roadmap.md) and GitHub issues.

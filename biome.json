@@ -3,12 +3,14 @@
   "extends": [
     "ultracite/biome/core",
     "ultracite/biome/react",
+    "ultracite/biome/astro",
     "ultracite/biome/vitest"
   ],
   "files": {
     "includes": [
       "!!**/.output",
       "!!**/.wxt",
+      "!!**/.astro",
       "!!**/dist",
       "!!**/.turbo",
       "!!pnpm-lock.yaml",
@@ -45,6 +47,16 @@
     }
   },
   "overrides": [
+    {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAttribute": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["src/apps/extension/e2e/**"],
       "linter": {

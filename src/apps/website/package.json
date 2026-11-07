@@ -1,0 +1,32 @@
+{
+  "name": "@lustre/website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Landing page for Lustre.",
+  "type": "module",
+  "scripts": {
+    "build": "astro build",
+    "dev": "astro dev",
+    "preview": "astro preview",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/react": "7.1.4",
+    "@lustre/api": "workspace:*",
+    "@lustre/icons": "workspace:*",
+    "@lustre/tailwind-config": "workspace:*",
+    "astro": "7.4.7",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@emnapi/runtime": "1.11.3",
+    "@tailwindcss/vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "6.0.3",
+    "vitest": "catalog:"
+  }
+}

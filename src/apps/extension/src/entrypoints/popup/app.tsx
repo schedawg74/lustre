@@ -207,7 +207,7 @@ const ReviewList = () => {
       <ul className="-mx-2 max-h-56 overflow-y-auto">
         {shown.slice(0, REVIEW_LIMIT).map((entry) => (
           <li
-            className="group flex items-center justify-between gap-2 rounded-stone px-2 py-1 text-sm hover:bg-surface"
+            className="flex items-center justify-between gap-2 rounded-stone px-2 py-1 text-sm hover:bg-surface"
             key={entry.userId}
           >
             <a
@@ -220,7 +220,6 @@ const ReviewList = () => {
               <span className="text-muted">@{entry.screenName}</span>
             </a>
             <Button
-              className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
               onClick={() => send({ type: "queue/skip", userId: entry.userId })}
               title={`Do not block @${entry.screenName}`}
               variant="quiet"

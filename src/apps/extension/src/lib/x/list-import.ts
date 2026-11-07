@@ -67,6 +67,15 @@ const createPanel = (): Panel => {
   };
 };
 
+const finishMessage = (added: number, skipped: number) => {
+  if (added === 0 && skipped === 0) {
+    return "No new members.";
+  }
+  return skipped > 0
+    ? `${added} queued. ${skipped} skipped by Safety settings or already blocked.`
+    : `${added} queued.`;
+};
+
 /**
  * Collects every member of a list from the list's members page. It scrolls
  * the page so that x.com loads the next page of members, and reads each page
@@ -118,11 +127,7 @@ const runImport = (
       (total, count) => total + count,
       0
     );
-    panel.setText(
-      skipped > 0
-        ? `${summary.added} queued. ${skipped} skipped by Safety settings or already blocked.`
-        : `${summary.added} queued.`
-    );
+    panel.setText(finishMessage(summary.added, skipped));
     panel.setButtons([
       ...(summary.added > 0
         ? [

@@ -6,8 +6,11 @@ import {
   createInstallResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
+  type ListsQuery,
+  listsResponseSchema,
   type Report,
   reportBatchResponseSchema,
+  statsResponseSchema,
 } from "./v1";
 
 /** The server answered with an error status. `code` comes from the error body. */
@@ -28,6 +31,16 @@ export type LustreApiOptions = {
   fetch: typeof fetch;
   /** The install token from `createInstall`. Reports and the blocklist need it. */
   token?: string;
+};
+
+const withQuery = (path: string, query: Record<string, unknown>) => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  return params.size > 0 ? `${path}?${params.toString()}` : path;
 };
 
 type RequestOptions = {
@@ -86,23 +99,16 @@ export const createLustreApi = ({
         authenticated: false,
         method: "POST",
       }),
-    getBlocklist: (query: BlocklistQuery = {}) => {
-      const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(query)) {
-        if (value !== undefined) {
-          params.set(key, String(value));
-        }
-      }
-      const search = params.size > 0 ? `?${params.toString()}` : "";
-      return request(
-        blocklistResponseSchema,
-        `${API_PATHS.blocklist}${search}`,
-        {
-          authenticated: true,
-          method: "GET",
-        }
-      );
-    },
+    getBlocklist: (query: BlocklistQuery = {}) =>
+      request(blocklistResponseSchema, withQuery(API_PATHS.blocklist, query), {
+        authenticated: true,
+        method: "GET",
+      }),
+    getLists: (query: ListsQuery = {}) =>
+      request(listsResponseSchema, withQuery(API_PATHS.lists, query), {
+        authenticated: true,
+        method: "GET",
+      }),
     health: () =>
       request(healthResponseSchema, API_PATHS.health, {
         authenticated: false,
@@ -113,6 +119,11 @@ export const createLustreApi = ({
         authenticated: true,
         body: { reports },
         method: "POST",
+      }),
+    stats: () =>
+      request(statsResponseSchema, API_PATHS.stats, {
+        authenticated: false,
+        method: "GET",
       }),
   };
 };

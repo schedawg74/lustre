@@ -4,7 +4,7 @@
 
 - Lustre has no analytics or error reporting. Do not add any.
 - Session data (cookies, `ct0`, bearer) stays in the x.com tab. Never store it in extension storage and never send it to another origin, also not to the Lustre server.
-- Sharing blocks with the Lustre server is opt-in and off by default. A report sends only the blocked or muted account's public data (user id, handle, display name), the action, the source (`list:<id>` or `post`), the time, and the anonymous install id with its token. It never sends the reporter's X identity, cookies, or tokens. See [server](server.md#privacy-decisions).
+- Sharing blocks with the Lustre server is opt-in and off by default. A report sends only the blocked or muted account's public data (user id, handle, display name), the action, the source (`list` or `post`), for a list import the X list's id, name, and owner handle, the time, and the anonymous install id with its token. It never sends the reporter's X identity, cookies, or tokens. See [server](server.md#privacy-decisions).
 - The server stores no IP address, user agent, or X identity of a reporter, and its logs have none.
 - Stored data is limited to settings, the block queue (user id, handle, display name, status), tracked lists, and runner state.
 - A future AI feature sends only the items it must score (titles, channel names, the owner's interest prompt) to the provider the owner configured, and stores the provider credential only in `storage.local`.

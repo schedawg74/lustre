@@ -3,9 +3,9 @@ import { dirname } from "node:path";
 import Sqlite from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { accounts, installs, reports } from "./schema";
+import { accounts, installs, lists, reports } from "./schema";
 
-const schema = { accounts, installs, reports };
+const schema = { accounts, installs, lists, reports };
 
 export const openDatabase = (path: string) => {
   if (path !== ":memory:") {
@@ -29,4 +29,11 @@ export const runMigrations = (db: Database, migrationsFolder: string) => {
   migrate(db, { migrationsFolder });
 };
 
-export { accounts, installs, REPORT_ACTIONS, reports } from "./schema";
+export {
+  accounts,
+  installs,
+  lists,
+  REPORT_ACTIONS,
+  REPORT_SOURCES,
+  reports,
+} from "./schema";

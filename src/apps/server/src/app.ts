@@ -1,5 +1,6 @@
-import cors from "cors";
-import express from "express";
+import { API_PATHS } from "@lustre/api/v1";
+import cors, { type CorsOptions } from "cors";
+import express, { type Request } from "express";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import type { Logger } from "./logger";
@@ -20,7 +21,14 @@ const BODY_LIMIT = "256kb";
 
 // Only the extension calls the API from a browser. Its background worker has
 // host permissions and does not need CORS; extension pages do.
-const EXTENSION_ORIGIN = /^(chrome|moz)-extension:\/\/[a-z0-9-]+$/;
+const EXTENSION_CORS: CorsOptions = {
+  allowedHeaders: ["Authorization", "Content-Type"],
+  maxAge: 600,
+  methods: ["GET", "POST"],
+  origin: /^(chrome|moz)-extension:\/\/[a-z0-9-]+$/,
+};
+// The landing page reads the public stats from any origin.
+const PUBLIC_CORS: CorsOptions = { maxAge: 600, methods: ["GET"], origin: "*" };
 
 export const createApp = ({
   logger,
@@ -55,11 +63,11 @@ export const createApp = ({
     })
   );
   app.use(
-    cors({
-      allowedHeaders: ["Authorization", "Content-Type"],
-      maxAge: 600,
-      methods: ["GET", "POST"],
-      origin: EXTENSION_ORIGIN,
+    cors<Request>((req, callback) => {
+      callback(
+        null,
+        req.path === API_PATHS.stats ? PUBLIC_CORS : EXTENSION_CORS
+      );
     })
   );
   app.use(express.json({ limit: BODY_LIMIT }));

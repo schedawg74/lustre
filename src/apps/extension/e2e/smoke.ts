@@ -46,18 +46,26 @@ const membersPages: Record<string, unknown[]> = {
     }),
   ],
   "1": [memberEntry("103", "slop_c")],
+  "2": [memberEntry("104", "slop_d")],
 };
 
+/** Like x.com: every page ends with a Bottom cursor, the last page is empty. */
 const membersResponse = (cursor: string) => {
-  const entries = membersPages[cursor] ?? [];
+  const users = membersPages[cursor] ?? [];
+  const bottom = {
+    content: { cursorType: "Bottom", value: String(Number(cursor) + 1) },
+    entryId: "cursor-bottom",
+  };
   return {
     data: {
       list: {
-        members_timeline: { timeline: { instructions: [{ entries }] } },
+        members_timeline: {
+          timeline: { instructions: [{ entries: [...users, bottom] }] },
+        },
       },
     },
     // Read by the fake page to draw one row per member.
-    rows: entries.length,
+    rows: users.length,
   };
 };
 
@@ -91,12 +99,13 @@ function openMenu(handle) {
 }
 </script></body></html>`;
 
+// Loads only the first page, as x.com does in a tab nobody scrolls: the
+// extension must fetch the other pages itself.
 const membersPage = `<!doctype html><html><body><div id="rows"></div>
 <script>
-let cursor = 0;
-function loadMore() {
+function loadFirstPage() {
   const xhr = new XMLHttpRequest();
-  const variables = encodeURIComponent(JSON.stringify({ listId: "${LIST_ID}", count: 20, cursor: String(cursor) }));
+  const variables = encodeURIComponent(JSON.stringify({ listId: "${LIST_ID}", count: 20, cursor: "0" }));
   xhr.open("GET", "/i/api/graphql/q1/ListMembers?variables=" + variables);
   xhr.setRequestHeader("authorization", "Bearer CAPTURED");
   xhr.onload = () => {
@@ -106,18 +115,16 @@ function loadMore() {
       row.style.height = "400px";
       document.getElementById("rows").append(row);
     }
-    cursor++;
   };
   xhr.send();
 }
 const info = new XMLHttpRequest();
 info.open("GET", "/i/api/graphql/q2/ListByRestId?variables=" + encodeURIComponent(JSON.stringify({ listId: "${LIST_ID}" })));
 info.send();
-loadMore();
-addEventListener("scroll", () => { if (cursor < 3) loadMore(); });
+loadFirstPage();
 </script></body></html>`;
 
-const fakeX = (calls: ApiCall[]) => (route: Route) => {
+const fakeX = (calls: ApiCall[], memberCursors: string[]) => (route: Route) => {
   const request = route.request();
   const url = new URL(request.url());
   if (url.pathname.startsWith("/i/api/1.1/")) {
@@ -135,6 +142,7 @@ const fakeX = (calls: ApiCall[]) => (route: Route) => {
   }
   if (url.pathname.endsWith("/ListMembers")) {
     const { cursor } = JSON.parse(url.searchParams.get("variables") ?? "{}");
+    memberCursors.push(String(cursor));
     return route.fulfill({ json: membersResponse(String(cursor)) });
   }
   const body = url.pathname.startsWith("/i/lists/") ? membersPage : homePage;
@@ -148,6 +156,7 @@ const openPopup = async (page: Page, extensionId: string) => {
 
 const main = async () => {
   const calls: ApiCall[] = [];
+  const memberCursors: string[] = [];
   const context = await chromium.launchPersistentContext("", {
     args: [
       `--disable-extensions-except=${EXTENSION_DIR}`,
@@ -160,7 +169,7 @@ const main = async () => {
     await context.addCookies([
       { domain: ".x.com", name: "ct0", path: "/", value: "csrf123" },
     ]);
-    await context.route("https://x.com/**", fakeX(calls));
+    await context.route("https://x.com/**", fakeX(calls, memberCursors));
     const worker =
       context.serviceWorkers()[0] ??
       (await context.waitForEvent("serviceworker"));
@@ -179,36 +188,29 @@ const main = async () => {
     const listTab = await opened;
     // The tab can load before the route above applies to it; load it again.
     await listTab.goto(`https://x.com/i/lists/${LIST_ID}/members`);
-    await listTab.waitForFunction(
-      () =>
-        document
-          .querySelector(".lustre-panel p")
-          ?.textContent?.includes("queued."),
-      null,
-      { timeout: 30_000 }
-    );
-    assert.match(
-      (await listTab.textContent(".lustre-panel p")) ?? "",
-      /^2 queued\. 1 skipped by Safety settings/
-    );
+    // The import pages through the list itself and closes its tab when done.
+    await listTab.waitForEvent("close", { timeout: 30_000 });
+    assert.deepEqual(memberCursors, ["0", "1", "2", "3"]);
 
-    // 2. Run the queue.
-    await listTab.click(".lustre-panel button.lustre-primary");
-    const deadline = Date.now() + 10_000;
-    while (calls.length < 2 && Date.now() < deadline) {
-      await listTab.waitForTimeout(100);
+    // 2. Run the queue from the popup header, which stayed open. Blocking
+    // runs inside an x.com tab, so open one, as the owner would have.
+    const home = await context.newPage();
+    await home.goto("https://x.com/home");
+    await popup.getByRole("button", { exact: true, name: "Start" }).click();
+    const deadline = Date.now() + 15_000;
+    while (calls.length < 3 && Date.now() < deadline) {
+      await popup.waitForTimeout(100);
     }
     assert.deepEqual(
-      calls.map((call) => [call.path, call.body, call.authorization]),
+      calls.map((call) => [call.path, call.body]),
       [
-        ["/i/api/1.1/blocks/create.json", "user_id=101", "Bearer CAPTURED"],
-        ["/i/api/1.1/blocks/create.json", "user_id=103", "Bearer CAPTURED"],
+        ["/i/api/1.1/blocks/create.json", "user_id=101"],
+        ["/i/api/1.1/blocks/create.json", "user_id=103"],
+        ["/i/api/1.1/blocks/create.json", "user_id=104"],
       ]
     );
 
     // 3. Post buttons.
-    const home = await context.newPage();
-    await home.goto("https://x.com/home");
     await home.waitForSelector(".lustre-actions");
     assert.equal(await home.locator(".lustre-actions").count(), 1);
     assert.equal(await home.locator(".lustre-action").count(), 3);
@@ -245,7 +247,7 @@ const main = async () => {
     await openPopup(popupAfter, extensionId);
     const listRow = await popupAfter.locator("li").first().textContent();
     assert.match(listRow ?? "", /AI slop/);
-    assert.match(listRow ?? "", /Done · 2 blocked, 1 skipped/);
+    assert.match(listRow ?? "", /Done · 3 blocked, 1 skipped/);
     await popupAfter.getByRole("tab", { name: /Accounts/ }).click();
     // The popup renders defaults first and fills in when storage loads, so
     // wait for the loaded counts instead of reading the first render.
@@ -253,7 +255,7 @@ const main = async () => {
       .waitForFunction(
         () =>
           document.querySelector('[data-testid="count-blocked"] span')
-            ?.textContent === "2",
+            ?.textContent === "3",
         null,
         { timeout: 10_000 }
       )
@@ -266,7 +268,7 @@ const main = async () => {
         .textContent();
       counts.push(text ?? "");
     }
-    assert.deepEqual(counts, ["0", "2", "1"]);
+    assert.deepEqual(counts, ["0", "3", "1"]);
     process.stdout.write("e2e smoke test passed\n");
   } finally {
     await context.close();

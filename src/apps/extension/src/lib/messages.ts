@@ -17,6 +17,8 @@ export type Message =
       users: XUser[];
     }
   | { type: "import/cancel"; listId: string }
+  | { type: "import/progress"; listId: string; found: number }
+  | { type: "import/show"; listId: string }
   | { type: "lists/remove"; listId: string }
   | {
       type: "queue/outcome";

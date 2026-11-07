@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractBottomCursor,
   extractListInfo,
   extractUsers,
   graphqlOperationName,
   graphqlVariables,
   parseListId,
   stripEmoji,
+  withGraphqlVariables,
 } from "./users";
 
 const userResult = (
@@ -149,6 +151,33 @@ describe("extractListInfo", () => {
     });
     expect(extractListInfo(payload, "7")).toBeUndefined();
     expect(extractListInfo({ data: {} }, "42")).toBeUndefined();
+  });
+});
+
+describe("pagination", () => {
+  it("reads the bottom cursor and ignores the top one", () => {
+    const payload = {
+      entries: [
+        { content: { cursorType: "Top", value: "top" } },
+        { content: { cursorType: "Bottom", value: "next-page" } },
+      ],
+    };
+    expect(extractBottomCursor(payload)).toBe("next-page");
+    expect(extractBottomCursor({ entries: [] })).toBeUndefined();
+  });
+
+  it("replaces variables and keeps the other parameters", () => {
+    const variables = encodeURIComponent(
+      JSON.stringify({ count: 20, listId: "1" })
+    );
+    const url = `https://x.com/i/api/graphql/q/ListMembers?variables=${variables}&features=%7B%22a%22%3Atrue%7D`;
+    const next = new URL(withGraphqlVariables(url, { cursor: "c2" }));
+    expect(JSON.parse(next.searchParams.get("variables") ?? "")).toEqual({
+      count: 20,
+      cursor: "c2",
+      listId: "1",
+    });
+    expect(next.searchParams.get("features")).toBe('{"a":true}');
   });
 });
 

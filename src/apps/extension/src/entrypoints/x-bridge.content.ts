@@ -13,7 +13,9 @@ type WithoutSource<T> = T extends unknown ? Omit<T, "source"> : never;
  * the API calls x.com makes and forwards two things to the content script:
  * the bearer header x.com currently uses, and the responses of the GraphQL
  * operations in FORWARDED_OPERATIONS (list members while importing a list).
- * It never changes a request or a response.
+ * With those responses it also forwards the request headers, so the content
+ * script can ask for the next page itself. It never changes a request or a
+ * response.
  */
 export default defineContentScript({
   main() {
@@ -36,18 +38,27 @@ export default defineContentScript({
       }
     };
 
-    const forward = (url: string, readJson: () => Promise<unknown>) => {
+    const forward = (
+      url: string,
+      headers: Record<string, string>,
+      readJson: () => Promise<unknown>
+    ) => {
       const operation = graphqlOperationName(url);
       if (!(operation && FORWARDED_OPERATIONS.has(operation))) {
         return;
       }
       readJson().then(
-        (payload) => post({ operation, payload, type: "graphql", url }),
+        (payload) =>
+          post({ headers, operation, payload, type: "graphql", url }),
         () => undefined
       );
     };
 
     const requestUrls = new WeakMap<XMLHttpRequest, string>();
+    const requestHeaders = new WeakMap<
+      XMLHttpRequest,
+      Record<string, string>
+    >();
     const { open, send, setRequestHeader } = XMLHttpRequest.prototype;
 
     XMLHttpRequest.prototype.open = function patchedOpen(
@@ -64,6 +75,10 @@ export default defineContentScript({
       value: string
     ) {
       seeHeader(name, value);
+      requestHeaders.set(this, {
+        ...requestHeaders.get(this),
+        [name.toLowerCase()]: value,
+      });
       return setRequestHeader.call(this, name, value);
     };
 
@@ -77,7 +92,7 @@ export default defineContentScript({
           if (this.status !== 200) {
             return;
           }
-          forward(url, async () =>
+          forward(url, requestHeaders.get(this) ?? {}, async () =>
             this.responseType === "json"
               ? this.response
               : JSON.parse(this.responseText)
@@ -96,12 +111,14 @@ export default defineContentScript({
       const headers = new Headers(
         init?.headers ?? (isRequest ? input.headers : undefined)
       );
+      const sent: Record<string, string> = {};
       for (const [name, value] of headers) {
         seeHeader(name, value);
+        sent[name] = value;
       }
       const response = await originalFetch.call(this, input, init);
       if (response.ok) {
-        forward(url, () => response.clone().json());
+        forward(url, sent, () => response.clone().json());
       }
       return response;
     };

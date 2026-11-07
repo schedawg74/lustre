@@ -4,6 +4,7 @@ import {
   IMPORT_TTL_MS,
   isImporting,
   startImport,
+  updateImport,
 } from "./pending-imports";
 
 describe("pending imports", () => {
@@ -20,5 +21,15 @@ describe("pending imports", () => {
     const imports = startImport({}, "a", 0);
     expect(isImporting(imports, "a", IMPORT_TTL_MS)).toBe(true);
     expect(isImporting(imports, "a", IMPORT_TTL_MS + 1)).toBe(false);
+  });
+});
+
+describe("import progress", () => {
+  it("updates only running imports", () => {
+    const imports = startImport({}, "a", 0);
+    expect(updateImport(imports, "a", { found: 40, requestedAt: 5 }).a).toEqual(
+      { found: 40, requestedAt: 5 }
+    );
+    expect(updateImport(imports, "b", { found: 1 })).toBe(imports);
   });
 });

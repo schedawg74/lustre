@@ -9,7 +9,12 @@ import {
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import type { ImportSummary, Message } from "@/lib/messages";
-import { endImport, isImporting, startImport } from "@/lib/pending-imports";
+import {
+  endImport,
+  isImporting,
+  startImport,
+  updateImport,
+} from "@/lib/pending-imports";
 import {
   listsItem,
   pendingImportsItem,
@@ -63,14 +68,38 @@ const handlers = {
         url: `https://x.com/i/lists/${listId}`,
       },
     });
-    await pendingImportsItem.setValue(
-      endImport(await pendingImportsItem.getValue(), listId)
-    );
+    const imports = await pendingImportsItem.getValue();
+    await pendingImportsItem.setValue(endImport(imports, listId));
+    // The import tab was opened in the background for this; close it.
+    const tabId = imports[listId]?.tabId;
+    if (tabId !== undefined) {
+      await browser.tabs.remove(tabId).catch(() => undefined);
+    }
     if (settings.autoStartAfterImport && summary.added > 0) {
       const runner = await runnerItem.getValue();
       await runnerItem.setValue({ ...runner, status: "running" });
     }
     return summary;
+  },
+
+  "import/progress": async ({ listId, found }) => {
+    await pendingImportsItem.setValue(
+      updateImport(await pendingImportsItem.getValue(), listId, {
+        found,
+        requestedAt: Date.now(),
+      })
+    );
+  },
+
+  "import/show": async ({ listId }) => {
+    const tabId = (await pendingImportsItem.getValue())[listId]?.tabId;
+    if (tabId === undefined) {
+      return;
+    }
+    const tab = await browser.tabs.update(tabId, { active: true });
+    if (tab?.windowId !== undefined) {
+      await browser.windows.update(tab.windowId, { focused: true });
+    }
   },
   "import/start": async ({ listId }) => {
     await pendingImportsItem.setValue(
@@ -85,7 +114,17 @@ const handlers = {
         url: `https://x.com/i/lists/${listId}`,
       },
     });
-    await browser.tabs.create({ url: membersUrl(listId) });
+    // In the background, so the owner keeps browsing. The import pages
+    // through the list with fetch, which works in a background tab.
+    const tab = await browser.tabs.create({
+      active: false,
+      url: membersUrl(listId),
+    });
+    await pendingImportsItem.setValue(
+      updateImport(await pendingImportsItem.getValue(), listId, {
+        tabId: tab.id,
+      })
+    );
   },
 
   "lists/remove": async ({ listId }) => {

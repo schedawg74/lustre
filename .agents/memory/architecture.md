@@ -40,7 +40,7 @@ The x.com API calls run in the content script, not in the background worker: the
 ## Boundaries
 
 - `src/packages/*` import no extension, DOM, or WXT module. Logic that can be pure goes there, with tests.
-- Only the background worker writes `blockQueue`, `runner`, `lists`, and `pendingImport`. Only the popup writes `settings`. Only the tab that holds the runner lock writes `runnerHeartbeat`.
+- Only the background worker writes `blockQueue`, `runner`, `lists`, and `pendingImports`. Only the popup writes `settings`. Only the tab that holds the runner lock writes `runnerHeartbeat`.
 - Site code stays in `src/lib/<site>/`. YouTube code goes in `src/lib/youtube/` with its own content script.
 - Server layers: routers -> services -> `@lustre/db`. Routers and middleware do not import `@lustre/db`, `drizzle-orm`, or `better-sqlite3` (Biome `noRestrictedImports`). `@lustre/infra` imports no workspace package.
 - The extension and the server share only `@lustre/api`. The extension must not import `@lustre/db` or server code.

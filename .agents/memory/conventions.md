@@ -22,11 +22,13 @@
 - The theme is modern Greek architecture: marble and travertine surfaces, ink text, gilded bronze as the only accent, and temple pigments as signal colors (terracotta = danger/block, ochre = warn/mute, Aegean = info/not interested, olive = success). Dark mode is basalt with marble text.
 - Tokens live in `src/tooling/tailwind/theme.css` (`@lustre/tailwind-config`). Components use the semantic colors (`bg-canvas`, `bg-surface`, `border-line`, `border-control`, `text-text`, `text-muted`, `text-accent`, `text-danger`, ...), never raw hex values or palette steps. `line` is decoration only; edges of fields and controls use `control` (at least 3:1). Text colors reach 4.5:1 on canvas in both modes; check new pairs before you add them.
 - Fonts: Cinzel (`font-display`, uppercase with wide tracking: wordmark, section titles, numbers) and Jost (`font-sans`, body and controls). Both are bundled from `@fontsource-variable`; never load fonts from a CDN.
-- Shapes are cut stone: `rounded-stone` (3 px), not pills. Section titles use the `inscription` utility and a Roman numeral in bronze. Motifs: `fluted` (column flutes) and `meander` (Greek key band). Use them sparingly, once per surface.
+- Shapes are cut stone: `rounded-stone` (3 px), not pills. Headings use the `inscription` utility. Motifs: `fluted` (column flutes) and `meander` (Greek key band). Use them sparingly, and not as dividers.
 
 ## Popup
 
-- Tailwind CSS 4 through `@tailwindcss/vite`. Shared building blocks are in `entrypoints/popup/ui.tsx` (`Section`, `Button`, `Toggle`, `Stat`, `Notice`, `Hint`, `fieldClass`). Width 380 px.
+- Tailwind CSS 4 through `@tailwindcss/vite`. Shared building blocks are in `entrypoints/popup/ui.tsx` (`Tabs`, `Button`, `Toggle`, `Heading`, `Notice`, `Hint`, `fieldClass`, `inputClass`, `linkClass`). Size 380 x 560 px; only the tab panel scrolls.
+- Structure (owner decision, 2026-11-07): the header holds the brand and the one activity indicator (`activity.tsx`: a clepsydra that fills with progress, a short status and the one Start / Pause / Resume / Retry control; nothing when there is nothing to do). Below it three tabs by task: Lists (default), Accounts, Settings. The queue is never a large block of numbers.
+- Room for later features: keep the top level by task, not by site. A shared blocklist is another entry in Lists plus a share toggle per list. YouTube settings become a site section in Settings ("On X", "On YouTube"). Add a fourth tab only if YouTube needs its own review list, and then put tab icons above the labels so four tabs fit in 380 px.
 - It follows the system light or dark setting through the theme's `prefers-color-scheme` override.
 - Settings take effect at once through storage watchers; there is no Save button.
 - New settings get a default in `DEFAULT_SETTINGS`.

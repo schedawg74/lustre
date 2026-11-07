@@ -1,7 +1,7 @@
 import { normalizeHandle } from "@lustre/block-queue/queue";
 import { useId, useState } from "react";
 import { DEFAULT_SETTINGS, type Settings, settingsItem } from "@/lib/storage";
-import { Chip, fieldClass, Heading, inputClass, Toggle } from "./ui";
+import { fieldClass, Heading, inputClass, Toggle } from "./ui";
 import { useStorageItem } from "./use-storage-item";
 
 const useSettings = () => {
@@ -34,28 +34,27 @@ export const SettingsTab = () => {
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
         <Heading>Buttons on posts</Heading>
-        <div className="flex flex-wrap gap-2">
-          <Chip
-            checked={settings.showBlockButton}
-            icon="pollice"
-            label="Block"
-            onChange={(showBlockButton) => update({ showBlockButton })}
-          />
-          <Chip
-            checked={settings.showMuteButton}
-            icon="tacita"
-            label="Mute"
-            onChange={(showMuteButton) => update({ showMuteButton })}
-          />
-          <Chip
-            checked={settings.showNotInterestedButton}
-            icon="aversio"
-            label="Not interested"
-            onChange={(showNotInterestedButton) =>
-              update({ showNotInterestedButton })
-            }
-          />
-        </div>
+        <Toggle
+          checked={settings.showBlockButton}
+          icon="pollice"
+          label="Block"
+          onChange={(showBlockButton) => update({ showBlockButton })}
+        />
+        <Toggle
+          checked={settings.showMuteButton}
+          icon="tacita"
+          label="Mute"
+          onChange={(showMuteButton) => update({ showMuteButton })}
+        />
+        <Toggle
+          checked={settings.showNotInterestedButton}
+          hint="X offers it on the For you timeline"
+          icon="aversio"
+          label="Not interested"
+          onChange={(showNotInterestedButton) =>
+            update({ showNotInterestedButton })
+          }
+        />
         <Toggle
           checked={settings.hideAfterAction}
           label="Hide the post after an action"

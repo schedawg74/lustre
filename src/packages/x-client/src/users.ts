@@ -97,14 +97,17 @@ export const extractUsers = (payload: unknown): XUser[] => {
   return [...users.values()];
 };
 
+export type ListInfo = { name?: string; ownerScreenName?: string };
+
 /**
- * The name of list `listId` in a GraphQL response (ListByRestId, and any
- * other response that embeds the list object), without emojis.
+ * The name and owner of list `listId` in a GraphQL response (ListByRestId,
+ * and any other response that embeds the list object). Emojis are removed
+ * from the name.
  */
-export const extractListName = (
+export const extractListInfo = (
   payload: unknown,
   listId: string
-): string | undefined => {
+): ListInfo | undefined => {
   const stack: unknown[] = [payload];
   while (stack.length > 0) {
     const node = stack.pop();
@@ -118,7 +121,11 @@ export const extractListName = (
     const id = readString(node, "id_str") ?? readString(node, "rest_id");
     const name = readString(node, "name");
     if (id === listId && name && node.__typename !== "User") {
-      return stripEmoji(name) || undefined;
+      const [owner] = extractUsers(node.user_results ?? node.user);
+      return {
+        name: stripEmoji(name) || undefined,
+        ownerScreenName: owner?.screenName,
+      };
     }
     stack.push(...Object.values(node));
   }

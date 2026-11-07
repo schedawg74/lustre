@@ -1,4 +1,4 @@
-import type { BlockQueue } from "@lustre/block-queue/queue";
+import { type BlockQueue, migrateQueueV1 } from "@lustre/block-queue/queue";
 import { storage } from "wxt/utils/storage";
 
 /** The list that started this project: accounts that post AI slop. */
@@ -44,8 +44,9 @@ export type RunnerState = {
 
 export type TrackedList = {
   listId: string;
-  /** The list's name on X, when the import could read it. */
+  /** The list's name and owner on X, when the import could read them. */
   name?: string;
+  ownerScreenName?: string;
   url: string;
   lastImportedAt?: number;
   memberCount?: number;
@@ -59,6 +60,9 @@ export const settingsItem = storage.defineItem<Settings>("local:settings", {
 
 export const queueItem = storage.defineItem<BlockQueue>("local:blockQueue", {
   fallback: {},
+  // Version 2: an account can come from several lists (`sources`).
+  migrations: { 2: migrateQueueV1 },
+  version: 2,
 });
 
 export const runnerItem = storage.defineItem<RunnerState>("local:runner", {

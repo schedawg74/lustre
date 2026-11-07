@@ -1,5 +1,5 @@
 import type { AddResult, Outcome } from "@lustre/block-queue/queue";
-import type { XUser } from "@lustre/x-client/users";
+import type { ListInfo, XUser } from "@lustre/x-client/users";
 import { browser } from "wxt/browser";
 import type { RunnerState } from "./storage";
 
@@ -13,10 +13,11 @@ export type Message =
   | {
       type: "import/finish";
       listId: string;
-      listName?: string;
+      list?: ListInfo;
       users: XUser[];
     }
   | { type: "import/cancel" }
+  | { type: "lists/remove"; listId: string }
   | { type: "queue/outcome"; userId: string; outcome: Outcome }
   | { type: "queue/skip"; userId: string }
   | { type: "queue/retryFailed" }

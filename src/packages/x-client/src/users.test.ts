@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  extractListName,
+  extractListInfo,
   extractUsers,
   graphqlOperationName,
   graphqlVariables,
@@ -132,20 +132,23 @@ describe("stripEmoji", () => {
   });
 });
 
-describe("extractListName", () => {
-  it("finds the list by id and ignores users with the same id", () => {
+describe("extractListInfo", () => {
+  it("reads the list name and owner, and ignores users with the same id", () => {
     const payload = {
       data: {
         list: {
           id_str: "42",
           name: "AI slop \u{1F916}",
-          user_results: { result: userResult("42", "someone") },
+          user_results: { result: userResult("42", "curator") },
         },
       },
     };
-    expect(extractListName(payload, "42")).toBe("AI slop");
-    expect(extractListName(payload, "7")).toBeUndefined();
-    expect(extractListName({ data: {} }, "42")).toBeUndefined();
+    expect(extractListInfo(payload, "42")).toEqual({
+      name: "AI slop",
+      ownerScreenName: "curator",
+    });
+    expect(extractListInfo(payload, "7")).toBeUndefined();
+    expect(extractListInfo({ data: {} }, "42")).toBeUndefined();
   });
 });
 

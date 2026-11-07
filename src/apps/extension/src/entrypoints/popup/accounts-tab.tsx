@@ -1,8 +1,4 @@
-import {
-  type EntryStatus,
-  type QueueEntry,
-  summarize,
-} from "@lustre/block-queue/queue";
+import { type EntryStatus, summarize } from "@lustre/block-queue/queue";
 import { useId, useMemo, useState } from "react";
 import { send } from "@/lib/messages";
 import { queueItem } from "@/lib/storage";
@@ -27,40 +23,34 @@ const REASONS: Record<string, string> = {
   "you-follow": "you follow",
 };
 
-const RowAction = ({ entry }: { entry: QueueEntry }) => {
-  if (entry.status === "pending") {
-    return (
-      <Button
-        onClick={() => send({ type: "queue/skip", userId: entry.userId })}
-        title={`Do not block @${entry.screenName}`}
-        variant="quiet"
-      >
-        Skip
-      </Button>
-    );
+/** Filters in the order the owner looks at them when the tab opens. */
+const AUTO_ORDER: EntryStatus[] = ["pending", "failed", "blocked", "skipped"];
+
+/**
+ * The filter to show: the one the owner picked if it still has a button,
+ * otherwise the first filter with accounts.
+ */
+const resolveFilter = (
+  picked: EntryStatus | undefined,
+  summary: Record<EntryStatus, number>
+): EntryStatus => {
+  if (picked && (picked !== "failed" || summary.failed > 0)) {
+    return picked;
   }
-  if (entry.status === "failed") {
-    return (
-      <Button
-        onClick={() => send({ type: "queue/retryFailed" })}
-        title="Queue every failed account again"
-        variant="quiet"
-      >
-        Retry all
-      </Button>
-    );
-  }
-  return null;
+  return AUTO_ORDER.find((status) => summary[status] > 0) ?? "pending";
 };
 
 export const AccountsTab = ({
-  initialFilter = "pending",
+  filter: picked,
+  onFilterChange,
 }: {
-  initialFilter?: EntryStatus;
+  /** Undefined: open on the first filter with accounts. */
+  filter?: EntryStatus;
+  onFilterChange: (filter: EntryStatus) => void;
 }) => {
   const queue = useStorageItem(queueItem);
   const summary = useMemo(() => summarize(queue), [queue]);
-  const [filter, setFilter] = useState<EntryStatus>(initialFilter);
+  const filter = resolveFilter(picked, summary);
   const [search, setSearch] = useState("");
   const searchId = useId();
 
@@ -90,10 +80,10 @@ export const AccountsTab = ({
         {filters.map((item) => (
           <button
             aria-pressed={filter === item.status}
-            className={`flex flex-1 cursor-pointer flex-col items-center rounded-stone py-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${filter === item.status ? "bg-surface text-text" : "text-muted hover:text-text"}`}
+            className={`relative flex flex-1 cursor-pointer flex-col items-center py-1.5 transition-colors after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${filter === item.status ? "text-text after:bg-accent" : "text-muted hover:text-text"}`}
             data-testid={`count-${item.status}`}
             key={item.status}
-            onClick={() => setFilter(item.status)}
+            onClick={() => onFilterChange(item.status)}
             type="button"
           >
             <span className="font-display text-lg tabular-nums leading-tight">
@@ -116,6 +106,14 @@ export const AccountsTab = ({
         type="search"
         value={search}
       />
+      {filter === "failed" && summary.failed > 0 ? (
+        <div className="flex items-center justify-between gap-3">
+          <Hint>X refused these blocks. Retrying queues them again.</Hint>
+          <Button onClick={() => send({ type: "queue/retryFailed" })}>
+            Retry all
+          </Button>
+        </div>
+      ) : null}
       {entries.length === 0 ? (
         <Hint>No accounts here.</Hint>
       ) : (
@@ -135,11 +133,23 @@ export const AccountsTab = ({
                   {entry.name}{" "}
                   <span className="text-muted">@{entry.screenName}</span>
                 </a>
-                {entry.reason && entry.status !== "pending" ? (
+                {entry.reason &&
+                entry.status !== "pending" &&
+                entry.status !== "blocked" ? (
                   <Hint>{REASONS[entry.reason] ?? entry.reason}</Hint>
                 ) : null}
               </div>
-              <RowAction entry={entry} />
+              {entry.status === "pending" ? (
+                <Button
+                  onClick={() =>
+                    send({ type: "queue/skip", userId: entry.userId })
+                  }
+                  title={`Do not block @${entry.screenName}`}
+                  variant="quiet"
+                >
+                  Skip
+                </Button>
+              ) : null}
             </li>
           ))}
         </ul>

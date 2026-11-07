@@ -1,6 +1,7 @@
 import {
   addCandidates,
   recordOutcome,
+  removeSource,
   retryFailed,
   skipEntry,
   summarize,
@@ -24,11 +25,7 @@ const handlers = {
     await pendingImportItem.setValue(null);
   },
 
-  "import/finish": async ({
-    listId,
-    listName,
-    users,
-  }): Promise<ImportSummary> => {
+  "import/finish": async ({ listId, list, users }): Promise<ImportSummary> => {
     const settings = await readSettings();
     const { queue, ...summary } = addCandidates(
       await queueItem.getValue(),
@@ -48,7 +45,9 @@ const handlers = {
         lastImportedAt: Date.now(),
         listId,
         memberCount: users.length,
-        name: listName ?? lists[listId]?.name,
+        name: list?.name ?? lists[listId]?.name,
+        ownerScreenName:
+          list?.ownerScreenName ?? lists[listId]?.ownerScreenName,
         url: `https://x.com/i/lists/${listId}`,
       },
     });
@@ -71,6 +70,16 @@ const handlers = {
       },
     });
     await browser.tabs.create({ url: membersUrl(listId) });
+  },
+
+  "lists/remove": async ({ listId }) => {
+    const { [listId]: _removed, ...lists } = await listsItem.getValue();
+    await listsItem.setValue(lists);
+    const { queue } = removeSource(
+      await queueItem.getValue(),
+      `list:${listId}`
+    );
+    await queueItem.setValue(queue);
   },
 
   "queue/outcome": async ({ userId, outcome }) => {

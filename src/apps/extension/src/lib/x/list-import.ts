@@ -119,8 +119,8 @@ const runImport = (
     panel.setText(`Adding ${members.size} members to the queue…`);
     panel.setButtons([]);
     const summary = await send({
+      list: session.listInfo(listId),
       listId,
-      listName: session.listName(listId),
       type: "import/finish",
       users: [...members.values()],
     });

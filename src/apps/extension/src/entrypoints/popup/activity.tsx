@@ -1,4 +1,4 @@
-import { summarize } from "@lustre/block-queue/queue";
+import { type EntryStatus, summarize } from "@lustre/block-queue/queue";
 import { ICONS } from "@lustre/icons/icons";
 import { useId, useMemo } from "react";
 import { send } from "@/lib/messages";
@@ -81,42 +81,104 @@ export const Clepsydra = ({
  * action that fits the state, and a link to the accounts. Shows nothing
  * when there is nothing to block.
  */
+/** Picks the status line and the one control for the header. */
+const describe = ({
+  pending,
+  failed,
+  status,
+  rateLimitedUntil,
+  tabMissing,
+  now,
+}: {
+  pending: number;
+  failed: number;
+  status: "idle" | "running" | "paused";
+  rateLimitedUntil: number;
+  tabMissing: boolean;
+  now: number;
+}): { label: string; action: "pause" | "resume" | "start" | "retry" } => {
+  const left = `${formatCount(pending)} left`;
+  if (status === "running") {
+    if (rateLimitedUntil > now) {
+      return {
+        action: "pause",
+        label: `X limit, resumes ${formatTime(rateLimitedUntil)}`,
+      };
+    }
+    return {
+      action: "pause",
+      label: tabMissing ? `Waiting for x.com, ${left}` : left,
+    };
+  }
+  if (pending > 0) {
+    return status === "paused"
+      ? { action: "resume", label: `Paused, ${left}` }
+      : { action: "start", label: `${formatCount(pending)} to block` };
+  }
+  return { action: "retry", label: `${formatCount(failed)} failed` };
+};
+
+const ACTION_LABELS = {
+  pause: "Pause",
+  resume: "Resume",
+  retry: "Retry",
+  start: "Start",
+} as const;
+
+/**
+ * The one place that shows blocking: a water clock, a short status, the
+ * action that fits the state, and a link to the accounts. Shows nothing
+ * when nothing is queued or failed.
+ */
 export const Activity = ({
   onShowAccounts,
 }: {
-  onShowAccounts: () => void;
+  onShowAccounts: (filter: EntryStatus) => void;
 }) => {
   const queue = useStorageItem(queueItem);
   const runner = useStorageItem(runnerItem);
   const heartbeat = useStorageItem(runnerHeartbeatItem);
   const now = useNow(2000);
   const summary = useMemo(() => summarize(queue), [queue]);
-  const { pending, blocked } = summary;
+  const { pending, blocked, failed } = summary;
   const running = runner.status === "running";
-  const rateLimitedUntil = runner.rateLimitedUntil ?? 0;
 
-  if (pending === 0 && !running) {
+  if (pending === 0 && failed === 0 && !running) {
     return null;
   }
 
-  const setStatus = (next: "running" | "paused") =>
-    send({ patch: { lastError: null, status: next }, type: "runner/update" });
-
-  let label = `${formatCount(pending)} to block`;
-  if (running && rateLimitedUntil > now) {
-    label = `X pause until ${formatTime(rateLimitedUntil)}`;
-  } else if (running) {
-    label = `${formatCount(pending)} left`;
-  } else if (runner.status === "paused") {
-    label = `Paused, ${formatCount(pending)} left`;
-  }
+  const rateLimitedUntil = runner.rateLimitedUntil ?? 0;
   const tabMissing = running && now - heartbeat > HEARTBEAT_STALE_MS;
+  const { label, action } = describe({
+    failed,
+    now,
+    pending,
+    rateLimitedUntil,
+    status: runner.status,
+    tabMissing,
+  });
+
+  const act = () => {
+    if (action === "retry") {
+      send({ type: "queue/retryFailed" });
+      return;
+    }
+    send({
+      patch: {
+        lastError: null,
+        status: action === "pause" ? "paused" : "running",
+      },
+      type: "runner/update",
+    });
+  };
 
   return (
     <div className="flex items-center gap-2">
       <button
-        className={`flex items-center gap-1.5 text-text text-xs tabular-nums hover:text-accent ${linkClass}`}
-        onClick={onShowAccounts}
+        className={`flex items-center gap-1.5 text-xs tabular-nums hover:text-accent ${action === "retry" ? "text-danger" : "text-text"} ${linkClass}`}
+        onClick={() =>
+          onShowAccounts(action === "retry" ? "failed" : "pending")
+        }
         title="Show accounts"
         type="button"
       >
@@ -126,15 +188,9 @@ export const Activity = ({
         />
         <span aria-live="polite">{label}</span>
       </button>
-      {running ? (
-        <Button onClick={() => setStatus("paused")} variant="quiet">
-          Pause
-        </Button>
-      ) : (
-        <Button onClick={() => setStatus("running")} variant="primary">
-          {runner.status === "paused" ? "Resume" : "Start"}
-        </Button>
-      )}
+      <Button onClick={act} variant={action === "pause" ? "quiet" : "primary"}>
+        {ACTION_LABELS[action]}
+      </Button>
     </div>
   );
 };

@@ -41,18 +41,29 @@ export const Hint = ({ children }: { children: ReactNode }) => (
 export const Toggle = ({
   label,
   hint,
+  icon,
   checked,
   onChange,
 }: {
   label: string;
   hint?: string;
+  icon?: IconName;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) => (
   <label className="flex cursor-pointer items-center justify-between gap-4 text-sm">
-    <span>
-      {label}
-      {hint ? <Hint>{hint}</Hint> : null}
+    <span className="flex items-center gap-3">
+      {icon ? (
+        <Icon
+          className={checked ? "text-accent" : "text-muted"}
+          name={icon}
+          size={18}
+        />
+      ) : null}
+      <span>
+        {label}
+        {hint ? <Hint>{hint}</Hint> : null}
+      </span>
     </span>
     <input
       aria-checked={checked}
@@ -63,35 +74,6 @@ export const Toggle = ({
       type="checkbox"
     />
   </label>
-);
-
-/** A toggle drawn as a chip, for short options that sit side by side. */
-export const Chip = ({
-  label,
-  icon,
-  checked,
-  onChange,
-}: {
-  label: string;
-  icon?: IconName;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) => (
-  <button
-    aria-pressed={checked}
-    className={`flex cursor-pointer items-center gap-2 rounded-stone px-3 py-1.5 text-xs ring-1 ring-inset transition-colors focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${checked ? "text-text ring-accent" : "text-muted ring-control hover:text-text"}`}
-    onClick={() => onChange(!checked)}
-    type="button"
-  >
-    {icon ? (
-      <Icon
-        className={checked ? "text-accent" : "text-muted"}
-        name={icon}
-        size={14}
-      />
-    ) : null}
-    {label}
-  </button>
 );
 
 export const Notice = ({
@@ -123,7 +105,6 @@ export type TabItem<T extends string> = {
   id: T;
   label: string;
   icon: IconName;
-  badge?: number;
 };
 
 /**
@@ -178,11 +159,6 @@ export const Tabs = <T extends string>({
           >
             <Icon name={item.icon} size={16} />
             {item.label}
-            {item.badge ? (
-              <span className="text-[10px] text-accent tabular-nums">
-                {item.badge}
-              </span>
-            ) : null}
           </button>
         );
       })}

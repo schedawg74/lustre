@@ -102,9 +102,13 @@ const ListRow = ({
         {confirming ? (
           <>
             <Button
-              onClick={() =>
-                send({ listId: list.listId, type: "lists/remove" })
-              }
+              onClick={(event) => {
+                // The second click of a double-click on Remove lands here.
+                if (event.detail > 1) {
+                  return;
+                }
+                send({ listId: list.listId, type: "lists/remove" });
+              }}
               title="Removes the list and its accounts that are not blocked yet"
               variant="danger"
             >
@@ -113,6 +117,7 @@ const ListRow = ({
             {/* Where the first click landed, so a double-click keeps the list. */}
             <Button
               autoFocus
+              className="min-w-16"
               onClick={() => setConfirming(false)}
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
@@ -134,7 +139,7 @@ const ListRow = ({
               Update
             </Button>
             <Button
-              className="opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+              className="hidden group-focus-within:block group-hover:block"
               onClick={() => setConfirming(true)}
               title="Remove this list"
               variant="quiet"

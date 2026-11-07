@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # deploy-server.yml runs the checks before it builds an image.
+  workflow_call:
 
 permissions:
   contents: read
@@ -31,3 +33,10 @@ jobs:
           path: |
             src/apps/extension/.output/chrome-mv3
             src/apps/extension/.output/firefox-mv3
+
+  # The image that deploy-server.yml pushes. Built here without a push.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build --file src/apps/server/Dockerfile --tag lustre-server:ci .

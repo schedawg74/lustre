@@ -1,7 +1,9 @@
 import { createXClient, type XClient } from "@lustre/x-client/client";
 import {
+  extractListInfo,
   extractUsers,
   graphqlVariables,
+  type ListInfo,
   type XUser,
 } from "@lustre/x-client/users";
 import { isBridgeMessage } from "./bridge-protocol";
@@ -40,6 +42,8 @@ export type XSession = {
    * still sees the first page.
    */
   onListMembers: (listener: MembersListener) => () => void;
+  /** The list's name and owner, once x.com loaded them in this tab. */
+  listInfo: (listId: string) => ListInfo | undefined;
 };
 
 /** Connects to the page bridge and builds an API client for this tab. */
@@ -47,6 +51,7 @@ export const createXSession = (): XSession => {
   let authorization: string | undefined;
   const seenPages: MembersPage[] = [];
   const listeners = new Set<MembersListener>();
+  const listInfos = new Map<string, ListInfo>();
 
   window.addEventListener("message", (event) => {
     if (event.source !== window || !isBridgeMessage(event.data)) {
@@ -58,7 +63,14 @@ export const createXSession = (): XSession => {
       return;
     }
     const listId = graphqlVariables(message.url)?.listId;
-    if (message.operation !== "ListMembers" || typeof listId !== "string") {
+    if (typeof listId !== "string") {
+      return;
+    }
+    const info = extractListInfo(message.payload, listId);
+    if (info) {
+      listInfos.set(listId, { ...listInfos.get(listId), ...info });
+    }
+    if (message.operation !== "ListMembers") {
       return;
     }
     const page = { listId, users: extractUsers(message.payload) };
@@ -78,6 +90,7 @@ export const createXSession = (): XSession => {
 
   return {
     client,
+    listInfo: (listId) => listInfos.get(listId),
     onListMembers: (listener) => {
       for (const page of seenPages) {
         listener(page);

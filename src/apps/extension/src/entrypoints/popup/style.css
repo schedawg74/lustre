@@ -5,3 +5,15 @@ body {
   margin: 0;
   background: var(--color-canvas);
 }
+
+/* A drop falling from the upper vessel of the clepsydra (activity.tsx). */
+@keyframes clepsydra-drip {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}

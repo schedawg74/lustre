@@ -97,6 +97,40 @@ export const extractUsers = (payload: unknown): XUser[] => {
   return [...users.values()];
 };
 
+export type ListInfo = { name?: string; ownerScreenName?: string };
+
+/**
+ * The name and owner of list `listId` in a GraphQL response (ListByRestId,
+ * and any other response that embeds the list object). Emojis are removed
+ * from the name.
+ */
+export const extractListInfo = (
+  payload: unknown,
+  listId: string
+): ListInfo | undefined => {
+  const stack: unknown[] = [payload];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (Array.isArray(node)) {
+      stack.push(...node);
+      continue;
+    }
+    if (!isObject(node)) {
+      continue;
+    }
+    const id = readString(node, "id_str") ?? readString(node, "rest_id");
+    const name = readString(node, "name");
+    if (id === listId && name && node.__typename !== "User") {
+      const [owner] = extractUsers(node.user_results ?? node.user);
+      return {
+        name: stripEmoji(name) || undefined,
+        ownerScreenName: owner?.screenName,
+      };
+    }
+    stack.push(...Object.values(node));
+  }
+};
+
 /** The GraphQL operation name in an X API URL, such as `ListMembers`. */
 export const graphqlOperationName = (url: string): string | undefined => {
   const match = GRAPHQL_PATH.exec(url);

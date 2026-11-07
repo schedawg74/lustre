@@ -1,0 +1,31 @@
+{
+  "name": "@lustre/icons",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./icons": "./src/icons.ts",
+    "./svg": "./src/svg.ts",
+    "./dom": "./src/dom.ts",
+    "./react": "./src/react.tsx",
+    "./brand/*": "./brand/*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@lustre/typescript-config": "workspace:*",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
+}

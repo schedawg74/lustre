@@ -75,29 +75,3 @@ export const hideTweet = (article: Element): (() => void) => {
   cell.classList.add(HIDDEN_CLASS);
   return () => cell.classList.remove(HIDDEN_CLASS);
 };
-
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-/** Builds a 24×24 outline icon without innerHTML (x.com uses Trusted Types). */
-export const icon = (paths: readonly string[]): SVGSVGElement => {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("aria-hidden", "true");
-  for (const d of paths) {
-    const path = document.createElementNS(SVG_NS, "path");
-    path.setAttribute("d", d);
-    svg.append(path);
-  }
-  return svg;
-};
-
-export const ICONS = {
-  block: ["M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z", "M5.6 5.6l12.8 12.8"],
-  mute: ["M4 9h4l5-4v14l-5-4H4z", "M16.5 9.5l5 5", "M21.5 9.5l-5 5"],
-  notInterested: [
-    "M3 3l18 18",
-    "M10.6 5.1A10 10 0 0 1 12 5c5 0 9 5 9 7c0 .9-.8 2.4-2.2 3.8",
-    "M6.6 6.6C4.4 8 3 10.6 3 12c0 2 4 7 9 7c1.9 0 3.6-.7 5-1.6",
-    "M9.9 9.9a3 3 0 0 0 4.2 4.2",
-  ],
-} as const;

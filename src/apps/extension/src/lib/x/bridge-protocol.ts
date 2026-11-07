@@ -5,7 +5,7 @@
 export const BRIDGE_SOURCE = "lustre-bridge";
 
 /** GraphQL operations whose responses the bridge forwards. */
-export const FORWARDED_OPERATIONS = new Set(["ListMembers"]);
+export const FORWARDED_OPERATIONS = new Set(["ListMembers", "ListByRestId"]);
 
 export type BridgeMessage =
   | { source: typeof BRIDGE_SOURCE; type: "auth"; authorization: string }

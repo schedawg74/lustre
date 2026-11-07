@@ -8,8 +8,11 @@ export type QueueEntry = {
   userId: string;
   screenName: string;
   name: string;
-  /** Where the account came from, such as `list:2116659176894071283`. */
-  source: string;
+  /**
+   * Every place the account came from, such as `list:2116659176894071283`
+   * or `post`. An account on two lists has both.
+   */
+  sources: string[];
   status: EntryStatus;
   /** Why it was skipped or why the last attempt failed. */
   reason?: string;
@@ -22,6 +25,7 @@ export type QueueEntry = {
 export type BlockQueue = Record<string, QueueEntry>;
 
 export type AddOptions = {
+  /** Where these accounts come from, such as `list:2116659176894071283`. */
   source: string;
   /** Handles that are never blocked. Compared case-insensitively, `@` ignored. */
   allowlist: readonly string[];
@@ -57,7 +61,8 @@ const skipReasonFor = (
 
 /**
  * Adds accounts to the queue. An account already in the queue keeps its
- * entry, so importing a list again only adds its new members.
+ * entry and status, so importing a list again only adds its new members; it
+ * only gains the new source, so it counts for every list it is on.
  */
 export const addCandidates = (
   queue: BlockQueue,
@@ -74,15 +79,22 @@ export const addCandidates = (
   let added = 0;
   let duplicates = 0;
   for (const user of users) {
-    if (next[user.id]) {
+    const existing = next[user.id];
+    if (existing) {
       duplicates += 1;
+      if (!existing.sources.includes(options.source)) {
+        next[user.id] = {
+          ...existing,
+          sources: [...existing.sources, options.source],
+        };
+      }
       continue;
     }
     const reason = skipReasonFor(user, allowlist, options.skipFollowing);
     next[user.id] = {
       name: user.name,
       screenName: user.screenName,
-      source: options.source,
+      sources: [options.source],
       status: reason ? "skipped" : "pending",
       userId: user.id,
       ...(reason ? { reason } : {}),
@@ -128,9 +140,19 @@ export const recordOutcome = (
   queue: BlockQueue,
   userId: string,
   outcome: Outcome,
-  now: number
+  now: number,
+  /**
+   * The entry as the runner saw it. If the entry left the queue while its
+   * block request was in flight (its list was removed), a completed block
+   * is still recorded from this copy, without the removed sources.
+   */
+  attempted?: QueueEntry
 ): BlockQueue => {
-  const entry = queue[userId];
+  const entry =
+    queue[userId] ??
+    (outcome.kind === "blocked" && attempted
+      ? { ...attempted, sources: [] }
+      : undefined);
   if (!entry) {
     return queue;
   }
@@ -217,3 +239,58 @@ export const jitteredDelay = (
   baseMs: number,
   random: () => number = Math.random
 ): number => Math.round(baseMs * (0.5 + random()));
+
+export type RemoveSourceResult = {
+  queue: BlockQueue;
+  /** Unblocked accounts that came only from this source and left the queue. */
+  dropped: number;
+};
+
+/**
+ * Forgets one source, for example when a list is removed. Accounts that
+ * came only from it leave the queue if they are not blocked yet (pending or
+ * failed); blocked and skipped accounts stay as history.
+ */
+export const removeSource = (
+  queue: BlockQueue,
+  source: string
+): RemoveSourceResult => {
+  const next: BlockQueue = {};
+  let dropped = 0;
+  for (const [id, entry] of Object.entries(queue)) {
+    if (!entry.sources.includes(source)) {
+      next[id] = entry;
+      continue;
+    }
+    const sources = entry.sources.filter((item) => item !== source);
+    // Failed accounts too: Retry all would otherwise block them later.
+    if (
+      sources.length === 0 &&
+      (entry.status === "pending" || entry.status === "failed")
+    ) {
+      dropped += 1;
+      continue;
+    }
+    next[id] = { ...entry, sources };
+  }
+  return { dropped, queue: next };
+};
+
+/** Queue entries as stored before an account could have several sources. */
+type LegacyEntry = Omit<QueueEntry, "sources"> & { source: string };
+
+/** Upgrades entries saved with a single `source` (storage version 1). */
+export const migrateQueueV1 = (
+  queue: Record<string, QueueEntry | LegacyEntry>
+): BlockQueue => {
+  const next: BlockQueue = {};
+  for (const [id, entry] of Object.entries(queue)) {
+    if ("sources" in entry) {
+      next[id] = entry;
+      continue;
+    }
+    const { source, ...rest } = entry;
+    next[id] = { ...rest, sources: [source] };
+  }
+  return next;
+};

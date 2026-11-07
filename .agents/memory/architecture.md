@@ -1,6 +1,6 @@
 # Architecture
 
-Lustre is a WXT browser extension in a Better-T-Stack monorepo (pnpm workspaces, Turborepo, Biome with Ultracite). It has no server.
+Lustre is a WXT browser extension in a Better-T-Stack monorepo (pnpm workspaces, Turborepo, Biome with Ultracite), with a static landing site. The extension has no server.
 Use manifests and lockfiles for dependency versions.
 
 ## Code map
@@ -8,6 +8,7 @@ Use manifests and lockfiles for dependency versions.
 | Path under `src/` | Responsibility |
 | --- | --- |
 | `apps/extension/` | WXT extension for Chrome and Firefox (MV3). React popup, background worker, content scripts |
+| `apps/website/` | Static Astro landing page with one React island (feed of blocked accounts, counters). See [website](website.md) |
 | `apps/extension/src/entrypoints/` | Manifest entry points only. Each file connects code from `src/lib/` |
 | `apps/extension/src/lib/storage.ts` | Every `storage.local` item, its type, and its default |
 | `apps/extension/src/lib/messages.ts` | The message types that the background worker accepts |

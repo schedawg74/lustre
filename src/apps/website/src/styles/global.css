@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@import "@lustre/tailwind-config/theme.css";
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-text);
+    scroll-behavior: smooth;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+}
+
+/*
+ * The feed of blocked accounts (components/live-stats.tsx). A card arrives,
+ * its thumb turns down (pollice verso), its name and post are chiselled
+ * out (damnatio memoriae), and later it slides away.
+ */
+@layer components {
+  @keyframes feed-card-in {
+    from {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      translate: 0 -0.75rem;
+    }
+  }
+
+  .feed-card {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+      grid-template-rows 600ms ease,
+      opacity 600ms ease,
+      translate 600ms ease;
+  }
+
+  .feed-card[data-state="arriving"] {
+    animation: feed-card-in 600ms ease-out both;
+  }
+
+  .feed-card[data-state="leaving"] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    translate: 2rem 0;
+  }
+
+  .feed-thumb {
+    color: var(--color-muted);
+    rotate: 180deg;
+    transition:
+      rotate 500ms cubic-bezier(0.5, -0.5, 0.3, 1.5),
+      color 500ms ease;
+  }
+
+  .feed-chisel {
+    background:
+      linear-gradient(var(--color-danger), var(--color-danger)) no-repeat 0 60%
+      / 0 2px;
+    box-decoration-break: clone;
+    transition:
+      background-size 500ms ease 200ms,
+      color 500ms ease 200ms;
+  }
+
+  .feed-verdict {
+    opacity: 0;
+    transition: opacity 400ms ease 400ms;
+  }
+
+  .feed-card:not([data-state="arriving"]) {
+    & .feed-thumb {
+      color: var(--color-danger);
+      rotate: 0deg;
+    }
+
+    & .feed-chisel {
+      color: var(--color-muted);
+      background-size: 100% 2px;
+    }
+
+    & .feed-verdict {
+      opacity: 1;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .feed-card,
+  .feed-card * {
+    transition: none;
+    animation: none;
+  }
+}

@@ -75,7 +75,9 @@ out like `safina` and `milton-platform`:
 src/
   apps/
     extension/        WXT browser extension (React popup, content scripts)
+    website/          Static Astro landing page (React island, Tailwind theme)
   packages/
+    icons/            Meandros icon set and brand icons
     x-client/         X web API calls and GraphQL response parsing
     block-queue/      Block queue logic (no browser APIs, unit-tested)
   tooling/
@@ -90,7 +92,8 @@ docs/plans/           Planned work
 | Command | What it does |
 | --- | --- |
 | `pnpm dev` | WXT dev mode for Chrome with hot reload |
-| `pnpm build` | Production builds for Chrome (MV3) and Firefox (MV3) |
+| `pnpm dev:website` | Astro dev server for the landing page |
+| `pnpm build` | Production builds for Chrome (MV3) and Firefox (MV3), and the static website in `src/apps/website/dist/` |
 | `pnpm zip` / `pnpm zip:firefox` | Store-ready zip files |
 | `pnpm test` | Vitest unit tests |
 | `pnpm test:e2e` | Chromium smoke test of the built extension against a fake x.com |

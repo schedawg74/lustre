@@ -1,0 +1,258 @@
+---
+import faviconUrl from "@lustre/icons/brand/icon.svg?url";
+import { ICONS, type IconName } from "@lustre/icons/icons";
+import { iconSvg } from "@lustre/icons/svg";
+import { LiveStats } from "../components/live-stats";
+import { INSTALL_URL, REPO_URL } from "../site";
+import "../styles/global.css";
+
+const title = "Lustre: purify your feeds";
+const description =
+  "A browser extension for Chrome and Firefox that blocks AI slop and spam on X in bulk, and puts Block, Mute and Not interested on every post.";
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+const features: {
+  gloss: string;
+  heading: string;
+  icon: IconName;
+  planned?: boolean;
+  text: string;
+}[] = [
+  {
+    gloss: "the scroll of names",
+    heading: "Block whole lists",
+    icon: "volumen",
+    text: "Import an X list of AI-slop accounts. Lustre blocks every member at a pace X accepts and skips people you follow.",
+  },
+  {
+    gloss: "the turned thumb",
+    heading: "Three buttons on every post",
+    icon: "pollice",
+    text: "Block, Mute and Not interested, one click each, with Undo.",
+  },
+  {
+    gloss: "turning the eyes away",
+    heading: "A calmer YouTube",
+    icon: "aversio",
+    planned: true,
+    text: "Hide Shorts, and let your own AI subscription curate the home feed.",
+  },
+  {
+    gloss: "the cleansing water",
+    heading: "A shared blocklist",
+    icon: "lustratio",
+    planned: true,
+    text: "Share your blocks anonymously, if you choose to, and receive the spammers others found.",
+  },
+];
+
+const steps = [
+  {
+    heading: "Install",
+    text: "Add Lustre to your browser and log in to X as usual.",
+  },
+  {
+    heading: "Collect",
+    text: "Import a list, or use the buttons as you scroll. You review the queue.",
+  },
+  {
+    heading: "Purify",
+    text: "Press Start blocking. Lustre pauses on its own when X asks it to slow down.",
+  },
+];
+
+const linkClass =
+  "underline decoration-control underline-offset-4 transition-colors hover:decoration-accent";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="light dark" name="color-scheme">
+    <meta
+      content="#faf8f3"
+      media="(prefers-color-scheme: light)"
+      name="theme-color"
+    >
+    <meta
+      content="#14130f"
+      media="(prefers-color-scheme: dark)"
+      name="theme-color"
+    >
+    <title>{title}</title>
+    <meta content={description} name="description">
+    <link href={canonical} rel="canonical">
+    <link href={faviconUrl} rel="icon" type="image/svg+xml">
+    <meta content="website" property="og:type">
+    <meta content="Lustre" property="og:site_name">
+    <meta content={title} property="og:title">
+    <meta content={description} property="og:description">
+    <meta content={canonical} property="og:url">
+    <meta content="summary" name="twitter:card">
+  </head>
+  <body
+    class="min-h-dvh overflow-x-clip bg-canvas font-sans text-text antialiased"
+  >
+    <a
+      class="sr-only rounded-stone bg-text px-4 py-2 text-canvas focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-10"
+      href="#main"
+    >
+      Skip to content
+    </a>
+
+    <header class="mx-auto flex max-w-6xl items-center px-4 pt-6 sm:px-6">
+      <a
+        aria-label="Lustre, home"
+        class="flex items-center gap-3 rounded-stone"
+        href="/"
+      >
+        <span
+          class="text-accent"
+          set:html={iconSvg("meandros", { size: 26 })}
+        />
+        <span class="inscription text-lg text-text">Lustre</span>
+      </a>
+    </header>
+
+    <main id="main">
+      <section
+        aria-labelledby="hero-title"
+        class="mx-auto max-w-6xl px-4 pt-10 pb-16 sm:px-6 lg:pt-16 lg:pb-20"
+      >
+        <LiveStats client:visible>
+          <p class="inscription text-accent text-xs sm:text-sm">
+            Lustrare: to purify, to make bright
+          </p>
+          <h1
+            class="mt-5 text-balance font-display font-semibold text-4xl leading-[1.1] sm:text-5xl lg:text-6xl"
+            id="hero-title"
+          >
+            Purify your feeds
+          </h1>
+          <p class="mt-6 max-w-xl text-lg text-muted leading-relaxed">
+            Lustre blocks the AI slop and spam on X for you, in bulk or one post
+            at a time.
+          </p>
+          <div class="mt-9 flex flex-wrap items-center gap-x-8 gap-y-5">
+            <a
+              class="inline-flex items-center gap-3 rounded-stone bg-accent px-6 py-3.5 font-medium text-on-accent tracking-wide transition-colors hover:bg-text hover:text-canvas"
+              href={INSTALL_URL}
+            >
+              <span set:html={iconSvg("lustratio", { size: 20 })} />
+              Add to Chrome
+            </a>
+            <a class={`font-medium ${linkClass}`} href={REPO_URL}>
+              Source on GitHub
+            </a>
+          </div>
+          <p class="mt-5 text-muted text-sm">
+            Store listing coming soon. The button opens the install steps.
+          </p>
+        </LiveStats>
+      </section>
+
+      <section
+        aria-labelledby="features-title"
+        class="mx-auto max-w-6xl px-4 py-16 sm:px-6"
+      >
+        <h2
+          class="inscription text-sm text-text sm:text-base"
+          id="features-title"
+        >
+          <span class="mr-3 text-accent">I</span>What it does
+        </h2>
+        <ul class="mt-10 grid gap-x-12 gap-y-10 sm:grid-cols-2">
+          {features.map((feature) => (
+            <li class="border-line border-t pt-6">
+              <div class="flex items-center gap-3 text-accent">
+                <span set:html={iconSvg(feature.icon, { size: 28 })} />
+                <span class="inscription text-xs">
+                  {ICONS[feature.icon].title}, {feature.gloss}
+                </span>
+              </div>
+              <h3 class="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-medium text-xl">
+                {feature.heading}
+                {feature.planned ? (
+                  <span class="inscription rounded-stone border border-control px-2 py-0.5 text-[0.65rem] text-muted">
+                    Planned
+                  </span>
+                ) : null}
+              </h3>
+              <p class="mt-3 text-muted leading-relaxed">{feature.text}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section
+        aria-labelledby="steps-title"
+        class="mx-auto max-w-6xl px-4 py-16 sm:px-6"
+      >
+        <h2 class="inscription text-sm text-text sm:text-base" id="steps-title">
+          <span class="mr-3 text-accent">II</span>How it works
+        </h2>
+        <ol class="mt-10 grid gap-10 md:grid-cols-3">
+          {steps.map((step, index) => (
+            <li class="flex gap-5">
+              <span
+                aria-hidden="true"
+                class="font-display text-4xl text-accent leading-none"
+              >
+                {index + 1}
+              </span>
+              <div>
+                <h3 class="font-medium text-xl">{step.heading}</h3>
+                <p class="mt-2 text-muted leading-relaxed">{step.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section
+        aria-labelledby="privacy-title"
+        class="mx-auto max-w-6xl px-4 py-16 sm:px-6"
+      >
+        <h2
+          class="inscription text-sm text-text sm:text-base"
+          id="privacy-title"
+        >
+          <span class="mr-3 text-accent">III</span>Privacy
+        </h2>
+        <div
+          class="fluted mt-8 flex flex-col gap-6 rounded-stone border border-line bg-surface px-6 py-8 sm:flex-row sm:items-start sm:px-10"
+        >
+          <span
+            class="shrink-0 text-accent"
+            set:html={iconSvg("scutum", { size: 32 })}
+          />
+          <p class="max-w-3xl text-lg text-text leading-relaxed">
+            Everything runs in your browser. Lustre acts with your own X
+            session, in your own tab, and your password and tokens never leave
+            it. There are no analytics. Sharing your blocks with the Lustre
+            server is opt-in and anonymous.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-6">
+      <div aria-hidden="true" class="meander text-control"></div>
+      <div
+        class="mt-8 flex flex-col gap-4 text-muted text-sm sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p class="flex flex-wrap items-center gap-3">
+          <span
+            class="text-text"
+            set:html={iconSvg("meandros", { size: 18 })}
+          />
+          <span class="inscription text-text">Lustre</span>
+          <span>Not affiliated with X or YouTube.</span>
+        </p>
+        <a class={linkClass} href={REPO_URL}>GitHub</a>
+      </div>
+    </footer>
+  </body>
+</html>

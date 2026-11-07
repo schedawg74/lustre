@@ -6,10 +6,10 @@ Read the affected package's manifest before selecting a command.
 
 | Area | Command | Prerequisites / limits |
 | --- | --- | --- |
-| Unit | `pnpm test` | Vitest over `src/**/*.test.ts` (root `vitest.config.ts`). Packages only; `fetch` is mocked |
-| Types | `pnpm typecheck` | Turborepo. The extension runs `wxt prepare` first to generate `.wxt/` types |
+| Unit | `pnpm test` | Vitest over `src/**/*.test.ts` (root `vitest.config.ts`). Packages and the website's `stats.ts`; `fetch` is mocked |
+| Types | `pnpm typecheck` | Turborepo. The extension runs `wxt prepare` first to generate `.wxt/` types; the website runs `astro check` |
 | Lint | `pnpm lint` | Read-only Biome check. `pnpm format` applies fixes |
-| Build | `pnpm build` | Chrome MV3 and Firefox MV3 into `src/apps/extension/.output/` |
+| Build | `pnpm build` | Chrome MV3 and Firefox MV3 into `src/apps/extension/.output/`; the website into `src/apps/website/dist/` |
 | End to end | `pnpm test:e2e` | Needs `pnpm build` first and Playwright Chromium (`pnpm --filter @lustre/extension exec playwright install chromium`). Headless |
 
 CI (`.github/workflows/ci.yml`) runs all five on every push to `main` and every PR.

@@ -175,13 +175,13 @@ const main = async () => {
       () =>
         document
           .querySelector(".lustre-panel p")
-          ?.textContent?.startsWith("Found"),
+          ?.textContent?.includes("queued."),
       null,
       { timeout: 30_000 }
     );
     assert.match(
       (await listTab.textContent(".lustre-panel p")) ?? "",
-      /Found 3 members\. 2 new accounts queued.*1 you follow/
+      /^2 queued\. 1 skipped by Safety settings/
     );
 
     // 2. Run the queue.
@@ -238,7 +238,7 @@ const main = async () => {
     const stats = await popupAfter
       .locator('[data-testid="queue-stats"] dd')
       .allTextContents();
-    assert.deepEqual(stats, ["0", "2", "1", "0"]);
+    assert.deepEqual(stats, ["0", "2", "1"]);
     process.stdout.write("e2e smoke test passed\n");
   } finally {
     await context.close();

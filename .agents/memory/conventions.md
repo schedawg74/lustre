@@ -11,7 +11,8 @@
 
 ## Injected UI on a site
 
-- Prefix every class name with `lustre-`. Styles live in `entrypoints/x.content/style.css`.
+- Prefix every class name with `lustre-`.
+- Icons: the Meandros style (straight lines, square caps, miter joins). The toolbar icon is drawn in `assets/icon.svg` and `assets/icon-small.svg` (16 and 32 px, edges on the pixel grid) and rendered with `pnpm --filter @lustre/extension icons`. Styles live in `entrypoints/x.content/style.css`.
 - Match the site's look: x.com's grey `rgb(113, 118, 123)` for idle icons, red for block, yellow for mute, blue for not interested.
 - Every button has a `title`, an `aria-label` with the target handle, and a visible focus outline.
 - Stop the click from reaching the post (`preventDefault` and `stopPropagation`): the post is a link.
@@ -20,7 +21,7 @@
 ## Theme
 
 - The theme is modern Greek architecture: marble and travertine surfaces, ink text, gilded bronze as the only accent, and temple pigments as signal colors (terracotta = danger/block, ochre = warn/mute, Aegean = info/not interested, olive = success). Dark mode is basalt with marble text.
-- Tokens live in `src/tooling/tailwind/theme.css` (`@lustre/tailwind-config`). Components use the semantic colors (`bg-canvas`, `bg-surface`, `border-line`, `text-text`, `text-muted`, `text-accent`, `text-danger`, ...), never raw hex values or palette steps.
+- Tokens live in `src/tooling/tailwind/theme.css` (`@lustre/tailwind-config`). Components use the semantic colors (`bg-canvas`, `bg-surface`, `border-line`, `border-control`, `text-text`, `text-muted`, `text-accent`, `text-danger`, ...), never raw hex values or palette steps. `line` is decoration only; edges of fields and controls use `control` (at least 3:1). Text colors reach 4.5:1 on canvas in both modes; check new pairs before you add them.
 - Fonts: Cinzel (`font-display`, uppercase with wide tracking: wordmark, section titles, numbers) and Jost (`font-sans`, body and controls). Both are bundled from `@fontsource-variable`; never load fonts from a CDN.
 - Shapes are cut stone: `rounded-stone` (3 px), not pills. Section titles use the `inscription` utility and a Roman numeral in bronze. Motifs: `fluted` (column flutes) and `meander` (Greek key band). Use them sparingly, once per surface.
 
@@ -35,6 +36,7 @@
 
 - `entrypoints/x.content/style.css` is plain CSS, not Tailwind: Tailwind's base styles would change x.com's own elements. It copies the theme's color values and uses system fonts, because x.com does not load the bundled fonts.
 - Post buttons keep x.com's grey idle color and take the theme's pigments on hover.
+- The toast is ink in both modes; the import panel follows `prefers-color-scheme`.
 
 ## Site text
 

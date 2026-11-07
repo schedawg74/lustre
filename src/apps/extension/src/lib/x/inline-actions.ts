@@ -87,7 +87,7 @@ export const mountInlineActions = async (
       if (action === "notInterested") {
         await clickMenuEntry(article, "notInterested");
         hide();
-        showToast(`Marked as not interested: post by @${handle}`);
+        showToast(`Not interested: @${handle}`);
         return;
       }
       const api = action === "block" ? client.block : client.mute;
@@ -120,7 +120,7 @@ export const mountInlineActions = async (
     } catch (error) {
       const message =
         error instanceof MenuEntryMissingError && action === "notInterested"
-          ? "X offers “Not interested” only on the For you timeline."
+          ? "Not interested works only on the For you timeline."
           : describeError(error);
       showToast(message, { tone: "error" });
     }

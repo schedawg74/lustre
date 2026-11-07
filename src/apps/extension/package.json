@@ -8,6 +8,7 @@
     "build": "wxt build && wxt build -b firefox --mv3",
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox --mv3",
+    "icons": "node scripts/render-icons.ts",
     "postinstall": "wxt prepare",
     "test:e2e": "node e2e/smoke.ts",
     "typecheck": "wxt prepare && tsc --noEmit",

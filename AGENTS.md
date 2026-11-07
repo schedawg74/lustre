@@ -5,6 +5,7 @@ Lustre is a personal browser extension. It removes unwanted content from X, and 
 ## Start here
 
 - Read complete files before you change them. Avoid in-file searches.
+- Never use emojis: not in code, UI copy, docs, commit messages, PR or issue text, or replies. Strip them from third-party text before it is shown in Lustre's UI.
 - Report to the user in ASD-STE100 Simplified Technical English. Use short, active sentences. Keep technical names exact. This rule does not apply to product copy.
 - Read [the memory index](.agents/memory/README.md), then load the files needed for the task. Source code, manifests, and tests define current behavior.
 - Use [README.md](README.md) for local setup and commands. Use [docs/plans](docs/plans/roadmap.md) for planned work.

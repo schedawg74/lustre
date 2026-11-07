@@ -15,7 +15,10 @@ const MEMBERS_PATH = /^\/i\/lists\/(\d+)\/members\/?$/;
 
 type Panel = {
   root: HTMLElement;
+  /** Replaces the message. Screen readers announce it. */
   setText: (text: string) => void;
+  /** A running count after the message, not announced. */
+  setProgress: (text: string) => void;
   setButtons: (
     buttons: { label: string; primary?: boolean; run: () => void }[]
   ) => void;
@@ -24,10 +27,16 @@ type Panel = {
 const createPanel = (): Panel => {
   const root = document.createElement("div");
   root.className = "lustre-panel";
-  root.setAttribute("role", "status");
+  root.setAttribute("role", "region");
+  root.setAttribute("aria-label", "Lustre list import");
   const title = document.createElement("strong");
   title.textContent = "Lustre";
   const text = document.createElement("p");
+  const message = document.createElement("span");
+  message.setAttribute("aria-live", "polite");
+  const progress = document.createElement("span");
+  progress.setAttribute("aria-hidden", "true");
+  text.append(message, progress);
   const buttons = document.createElement("div");
   buttons.className = "lustre-panel-buttons";
   root.append(title, text, buttons);
@@ -48,10 +57,23 @@ const createPanel = (): Panel => {
         })
       );
     },
+    setProgress: (value) => {
+      progress.textContent = value;
+    },
     setText: (value) => {
-      text.textContent = value;
+      message.textContent = value;
+      progress.textContent = "";
     },
   };
+};
+
+const finishMessage = (added: number, skipped: number) => {
+  if (added === 0 && skipped === 0) {
+    return "No new members.";
+  }
+  return skipped > 0
+    ? `${added} queued. ${skipped} skipped by Safety settings or already blocked.`
+    : `${added} queued.`;
 };
 
 /**
@@ -94,27 +116,18 @@ const runImport = (
 
   const finish = async () => {
     stop();
-    panel.setText(`Adding ${members.size} accounts to the block queue…`);
+    panel.setText(`Adding ${members.size} members to the queue…`);
     panel.setButtons([]);
     const summary = await send({
       listId,
       type: "import/finish",
       users: [...members.values()],
     });
-    const skipped = Object.entries(summary.skipped)
-      .filter(([, count]) => count > 0)
-      .map(([reason, count]) => `${count} ${reason.replace("-", " ")}`);
-    panel.setText(
-      [
-        `Found ${members.size} members. ${summary.added} new accounts queued for blocking.`,
-        skipped.length > 0 ? `Skipped: ${skipped.join(", ")}.` : "",
-        summary.duplicates > 0
-          ? `${summary.duplicates} were already in the queue.`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" ")
+    const skipped = Object.values(summary.skipped).reduce(
+      (total, count) => total + count,
+      0
     );
+    panel.setText(finishMessage(summary.added, skipped));
     panel.setButtons([
       ...(summary.added > 0
         ? [
@@ -126,9 +139,7 @@ const runImport = (
                   patch: { lastError: null, status: "running" },
                   type: "runner/update",
                 });
-                panel.setText(
-                  "Blocking runs in the background while an x.com tab is open. The extension icon shows progress."
-                );
+                panel.setText("Blocking. Keep an x.com tab open.");
                 panel.setButtons([
                   { label: "Close", run: () => panel.root.remove() },
                 ]);
@@ -145,7 +156,7 @@ const runImport = (
       return;
     }
     const idleFor = Date.now() - lastGrowthAt;
-    panel.setText(`Collecting list members… ${members.size} found so far.`);
+    panel.setProgress(` ${members.size}`);
     if (
       (reachedEnd && idleFor > SCROLL_EVERY_MS * 2) ||
       idleFor > IDLE_FINISH_MS
@@ -164,8 +175,9 @@ const runImport = (
     }
   };
 
+  panel.setText("Collecting members…");
   panel.setButtons([
-    { label: "Finish now", primary: true, run: () => finish() },
+    { label: "Finish", primary: true, run: () => finish() },
     {
       label: "Cancel",
       run: async () => {

@@ -22,6 +22,7 @@
   --color-marble-300: #d6cebd;
   --color-stone-400: #b3aa98;
   --color-stone-500: #8a8275;
+  --color-stone-550: #7a7264;
   --color-stone-600: #6b6458;
   --color-basalt-700: #2e2b24;
   --color-basalt-800: #1e1c17;
@@ -34,7 +35,7 @@
   --color-terracotta-400: #d06a50;
   --color-terracotta-600: #b4533a;
   --color-ochre-400: #d9b25a;
-  --color-ochre-600: #a8801f;
+  --color-ochre-600: #86651f;
   --color-aegean-400: #6f9cc9;
   --color-aegean-600: #2f5d8a;
   --color-olive-400: #9ca36a;
@@ -48,6 +49,8 @@
   --color-canvas: var(--lustre-canvas);
   --color-surface: var(--lustre-surface);
   --color-line: var(--lustre-line);
+  /* Edges of fields and controls: at least 3:1 against the canvas. */
+  --color-control: var(--lustre-control);
   --color-text: var(--lustre-text);
   --color-muted: var(--lustre-muted);
   --color-accent: var(--lustre-accent);
@@ -62,9 +65,10 @@
   --lustre-canvas: var(--color-marble-50);
   --lustre-surface: var(--color-marble-100);
   --lustre-line: var(--color-marble-200);
+  --lustre-control: var(--color-stone-500);
   --lustre-text: var(--color-ink);
   --lustre-muted: var(--color-stone-600);
-  --lustre-accent: var(--color-bronze-500);
+  --lustre-accent: var(--color-bronze-600);
   --lustre-on-accent: var(--color-marble-50);
   --lustre-danger: var(--color-terracotta-600);
   --lustre-warn: var(--color-ochre-600);
@@ -78,6 +82,7 @@
     --lustre-canvas: var(--color-basalt-900);
     --lustre-surface: var(--color-basalt-800);
     --lustre-line: var(--color-basalt-700);
+    --lustre-control: var(--color-stone-550);
     --lustre-text: var(--color-marble-100);
     --lustre-muted: var(--color-stone-400);
     --lustre-accent: var(--color-bronze-400);

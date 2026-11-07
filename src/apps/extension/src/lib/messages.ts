@@ -16,7 +16,7 @@ export type Message =
       list?: ListInfo;
       users: XUser[];
     }
-  | { type: "import/cancel" }
+  | { type: "import/cancel"; listId: string }
   | { type: "lists/remove"; listId: string }
   | {
       type: "queue/outcome";

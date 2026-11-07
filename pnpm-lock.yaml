@@ -266,6 +266,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.5(@types/node@26.6.5)(vite@8.3.6(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1))
       wxt:
         specifier: 0.21.5
         version: 0.21.5(rolldown@1.2.16)(typescript@7.0.2)(vite@8.3.6(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1))

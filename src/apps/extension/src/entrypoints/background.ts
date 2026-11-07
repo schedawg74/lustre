@@ -9,9 +9,10 @@ import {
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import type { ImportSummary, Message } from "@/lib/messages";
+import { endImport, isImporting, startImport } from "@/lib/pending-imports";
 import {
   listsItem,
-  pendingImportItem,
+  pendingImportsItem,
   queueItem,
   readSettings,
   runnerItem,
@@ -21,13 +22,15 @@ const membersUrl = (listId: string) =>
   `https://x.com/i/lists/${listId}/members`;
 
 const handlers = {
-  "import/cancel": async () => {
-    await pendingImportItem.setValue(null);
+  "import/cancel": async ({ listId }) => {
+    await pendingImportsItem.setValue(
+      endImport(await pendingImportsItem.getValue(), listId)
+    );
   },
 
   "import/finish": async ({ listId, list, users }): Promise<ImportSummary> => {
     // The list was removed (or the import cancelled) while it collected.
-    if ((await pendingImportItem.getValue())?.listId !== listId) {
+    if (!isImporting(await pendingImportsItem.getValue(), listId, Date.now())) {
       return {
         added: 0,
         cancelled: true,
@@ -60,7 +63,9 @@ const handlers = {
         url: `https://x.com/i/lists/${listId}`,
       },
     });
-    await pendingImportItem.setValue(null);
+    await pendingImportsItem.setValue(
+      endImport(await pendingImportsItem.getValue(), listId)
+    );
     if (settings.autoStartAfterImport && summary.added > 0) {
       const runner = await runnerItem.getValue();
       await runnerItem.setValue({ ...runner, status: "running" });
@@ -68,7 +73,9 @@ const handlers = {
     return summary;
   },
   "import/start": async ({ listId }) => {
-    await pendingImportItem.setValue({ listId, requestedAt: Date.now() });
+    await pendingImportsItem.setValue(
+      startImport(await pendingImportsItem.getValue(), listId, Date.now())
+    );
     const lists = await listsItem.getValue();
     await listsItem.setValue({
       ...lists,
@@ -83,9 +90,9 @@ const handlers = {
 
   "lists/remove": async ({ listId }) => {
     // A running import of this list must not bring it back when it ends.
-    if ((await pendingImportItem.getValue())?.listId === listId) {
-      await pendingImportItem.setValue(null);
-    }
+    await pendingImportsItem.setValue(
+      endImport(await pendingImportsItem.getValue(), listId)
+    );
     const { [listId]: _removed, ...lists } = await listsItem.getValue();
     await listsItem.setValue(lists);
     const { queue } = removeSource(

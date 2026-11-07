@@ -1,6 +1,6 @@
 # Repository instructions
 
-Lustre is a personal browser extension. It removes unwanted content from X, and later from YouTube, for one owner. See [architecture](.agents/memory/architecture.md) for the stack.
+Lustre is a personal browser extension. It removes unwanted content from X, and later from YouTube, for one owner. A small server collects shared blocklist reports. See [architecture](.agents/memory/architecture.md) for the stack.
 
 ## Start here
 
@@ -13,7 +13,7 @@ Lustre is a personal browser extension. It removes unwanted content from X, and 
 ## Implementation rules
 
 - Build the smallest complete solution. Keep concerns separate. Use existing dependencies and check their types and documentation. Remove obsolete paths. Do not add compatibility layers, speculative abstractions, or temporary implementations.
-- Keep the layers of [architecture](.agents/memory/architecture.md#boundaries): packages under `src/packages/` use no extension or DOM APIs; `src/apps/extension/src/lib/<site>/` holds the code for one site; entry points only connect them.
+- Keep the layers of [architecture](.agents/memory/architecture.md#boundaries): packages under `src/packages/` use no extension or DOM APIs; `src/apps/extension/src/lib/<site>/` holds the code for one site; entry points only connect them. In the server, routers call services and only services use `@lustre/db`.
 - The background worker owns every write to the block queue, the runner state, and the import request. Content scripts and the popup send messages (`src/lib/messages.ts`). They do not write those storage items.
 - Clear an optional stored field with `null`, not `undefined`: runtime messages drop keys whose value is `undefined`.
 - Keep site selectors and menu texts in one place per site, and update [the platform note](.agents/memory/x-platform.md) when they change.
@@ -26,11 +26,12 @@ Lustre is a personal browser extension. It removes unwanted content from X, and 
 - Do not add wrappers that only forward a value, await a call, or read a property.
 - Build page DOM with `createElement` and `createElementNS`, never `innerHTML`: x.com enforces Trusted Types. Prefix every injected class name with `lustre-`.
 - Call hooks at the top level. Give iterators stable keys. Calculate derived state during render; use `useMemo` for expensive work. Do not derive state in `useEffect`.
-- No data leaves the browser. There is no server and no analytics. A future AI feature sends only the content it must score, and only to the provider the owner configured. See [conventions](.agents/memory/conventions.md).
+- No data leaves the browser, with one opt-in exception: sharing blocks with the Lustre server. It sends only the blocked account's public data (user id, handle, display name, action, source, time) and an anonymous install id, never the reporter's X identity, cookies, or tokens. There are no analytics. A future AI feature sends only the content it must score, and only to the provider the owner configured. See [conventions](.agents/memory/conventions.md).
 
 ## Checks
 
 Run checks for the affected behavior. See [testing](.agents/memory/testing.md).
+Never run `pulumi up` or create cloud resources without the owner's explicit request. See [infrastructure](.agents/memory/infrastructure.md).
 `pnpm lint` checks without fixes; `pnpm format` changes files. Do not mix unrelated formatting into a task.
 Follow [agent workflow preferences](.agents/memory/agent-workflow.md). Pick models by the roles in [model roles](.agents/memory/agent-workflow.md#model-roles). Only the Implementer and the Fixer write code.
 

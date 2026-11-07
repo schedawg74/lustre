@@ -14,6 +14,18 @@ Next steps on X:
   the author for review.
 - Export and import the queue and allowlist as JSON.
 
+## Shared blocklist (server built, not deployed)
+
+The server, its database, and the Hetzner program exist (`src/apps/server`,
+`src/packages/db`, `src/packages/api`, `src/packages/infra`). Open steps:
+
+- Deploy: domain, Hetzner project, buckets, Tailscale keys, first `pulumi up`.
+- Extension: an opt-in setting, a stored install token, and batched reports
+  through `createLustreApi` from the background worker after each block or mute.
+- Download: import the shared blocklist into the block queue, with a minimum
+  reporter count.
+- Payment gating for the download (planned: 1 USD).
+
 ## 2. YouTube: hide Shorts
 
 A content script for `youtube.com` that removes the Shorts shelf

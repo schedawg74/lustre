@@ -1,7 +1,7 @@
 # Repository memory
 
 Read the entry for the affected area. Paths inside each note point to the source of current behavior.
-The notes describe repository state on 2026-11-07 (v0.1, X only).
+The notes describe repository state on 2026-11-07 (v0.1, X only, blocklist server not deployed).
 
 | Task | Read |
 | --- | --- |
@@ -9,6 +9,8 @@ The notes describe repository state on 2026-11-07 (v0.1, X only).
 | Change manifest, content scripts, storage, or browser support | [Extension runtime](extension-runtime.md) |
 | Change anything that calls x.com or reads its DOM | [X platform](x-platform.md) |
 | Change UI, injected styles, privacy, or naming | [Conventions](conventions.md) |
+| Change the blocklist server, its API, or its database | [Server](server.md) |
+| Change Hetzner resources, deploys, or backups | [Infrastructure](infrastructure.md) |
 | Select and run tests | [Testing](testing.md) |
 | Select models or configure coding agents | [Agent workflow](agent-workflow.md) |
 

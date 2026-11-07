@@ -1,4 +1,39 @@
-/* Buttons under each post, styled like x.com's own action bar. */
+/*
+ * Styles that Lustre adds to x.com. They use plain CSS, not Tailwind:
+ * Tailwind's base styles would change x.com's own elements. The colors are
+ * the Lustre theme (src/tooling/tailwind/theme.css). x.com does not load the
+ * Lustre fonts, so headings fall back to a classical serif.
+ */
+.lustre-panel,
+.lustre-toast {
+  --lustre-canvas: #faf8f3;
+  --lustre-surface: #f3efe6;
+  --lustre-line: #e7e1d4;
+  --lustre-text: #1f1c17;
+  --lustre-muted: #6b6458;
+  --lustre-accent: #a9824a;
+  --lustre-on-accent: #faf8f3;
+  --lustre-danger: #b4533a;
+  --lustre-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --lustre-display: "Cinzel Variable", "Trajan Pro", Georgia, serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .lustre-panel,
+  .lustre-toast {
+    --lustre-canvas: #14130f;
+    --lustre-surface: #1e1c17;
+    --lustre-line: #2e2b24;
+    --lustre-text: #f3efe6;
+    --lustre-muted: #b3aa98;
+    --lustre-accent: #c9a46a;
+    --lustre-on-accent: #14130f;
+    --lustre-danger: #d06a50;
+  }
+}
+
+/* Buttons under each post. Idle they look like x.com's own action icons. */
 .lustre-actions {
   display: inline-flex;
   gap: 2px;
@@ -38,26 +73,27 @@
   opacity: 0.5;
 }
 
+/* Hover colors are the theme's pigments: terracotta, ochre, Aegean blue. */
 .lustre-action-block:hover,
 .lustre-action-block:focus-visible {
-  color: rgb(244, 33, 46);
-  background: rgba(244, 33, 46, 0.1);
+  color: #d06a50;
+  background: rgba(208, 106, 80, 0.14);
 }
 
 .lustre-action-mute:hover,
 .lustre-action-mute:focus-visible {
-  color: rgb(255, 173, 31);
-  background: rgba(255, 173, 31, 0.12);
+  color: #d9b25a;
+  background: rgba(217, 178, 90, 0.16);
 }
 
 .lustre-action-notInterested:hover,
 .lustre-action-notInterested:focus-visible {
-  color: rgb(29, 155, 240);
-  background: rgba(29, 155, 240, 0.1);
+  color: #6f9cc9;
+  background: rgba(111, 156, 201, 0.16);
 }
 
 .lustre-action:focus-visible {
-  outline: 2px solid rgb(29, 155, 240);
+  outline: 2px solid #c9a46a;
   outline-offset: 1px;
 }
 
@@ -80,30 +116,27 @@
   gap: 16px;
   align-items: center;
   max-width: calc(100vw - 32px);
-  padding: 12px 16px;
-  font:
-    15px / 1.3 -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  color: #fff;
-  background: rgb(29, 155, 240);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  padding: 12px 18px;
+  font: 14px / 1.35 var(--lustre-sans);
+  color: var(--lustre-canvas);
+  background: var(--lustre-text);
+  border-top: 2px solid var(--lustre-accent);
+  border-radius: 3px;
+  box-shadow: 0 8px 24px rgba(20, 19, 15, 0.28);
   transform: translateX(-50%);
 }
 
 .lustre-toast-error {
-  background: rgb(244, 33, 46);
+  border-top-color: var(--lustre-danger);
 }
 
 .lustre-toast button {
   padding: 0;
   font: inherit;
-  font-weight: 700;
-  color: inherit;
-  text-decoration: underline;
+  font-weight: 600;
+  color: var(--lustre-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   cursor: pointer;
   background: none;
   border: 0;
@@ -115,23 +148,26 @@
   bottom: 24px;
   z-index: 2147483647;
   width: min(340px, calc(100vw - 32px));
-  padding: 16px;
-  font:
-    15px / 1.4 -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  color: rgb(231, 233, 234);
-  background: rgb(0, 0, 0);
-  border: 1px solid rgb(47, 51, 54);
-  border-radius: 16px;
-  box-shadow: 0 8px 28px rgba(255, 255, 255, 0.12);
+  padding: 16px 18px;
+  font: 14px / 1.45 var(--lustre-sans);
+  color: var(--lustre-text);
+  background: var(--lustre-canvas);
+  border: 1px solid var(--lustre-line);
+  border-top: 3px double var(--lustre-accent);
+  border-radius: 3px;
+  box-shadow: 0 12px 32px rgba(20, 19, 15, 0.22);
+}
+
+.lustre-panel strong {
+  font-family: var(--lustre-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
 }
 
 .lustre-panel p {
-  margin: 8px 0 12px;
-  color: rgb(139, 152, 165);
+  margin: 8px 0 14px;
+  color: var(--lustre-muted);
 }
 
 .lustre-panel-buttons {
@@ -141,18 +177,30 @@
 }
 
 .lustre-panel button {
-  padding: 6px 16px;
-  font: inherit;
-  font-weight: 700;
-  color: inherit;
+  padding: 7px 14px;
+  font: 600 11px / 1 var(--lustre-sans);
+  color: var(--lustre-text);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   cursor: pointer;
   background: transparent;
-  border: 1px solid rgb(83, 100, 113);
-  border-radius: 9999px;
+  border: 1px solid var(--lustre-line);
+  border-radius: 3px;
+}
+
+.lustre-panel button:hover {
+  color: var(--lustre-accent);
+  border-color: var(--lustre-accent);
 }
 
 .lustre-panel button.lustre-primary {
-  color: rgb(15, 20, 25);
-  background: rgb(239, 243, 244);
-  border-color: rgb(239, 243, 244);
+  color: var(--lustre-canvas);
+  background: var(--lustre-text);
+  border-color: var(--lustre-text);
+}
+
+.lustre-panel button.lustre-primary:hover {
+  color: var(--lustre-on-accent);
+  background: var(--lustre-accent);
+  border-color: var(--lustre-accent);
 }

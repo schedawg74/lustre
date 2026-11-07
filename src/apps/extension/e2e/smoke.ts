@@ -235,7 +235,9 @@ const main = async () => {
     // 4. The popup shows the result.
     const popupAfter = await context.newPage();
     await openPopup(popupAfter, extensionId);
-    const stats = await popupAfter.locator(".stats dd").allTextContents();
+    const stats = await popupAfter
+      .locator('[data-testid="queue-stats"] dd')
+      .allTextContents();
     assert.deepEqual(stats, ["0", "2", "1", "0"]);
     process.stdout.write("e2e smoke test passed\n");
   } finally {

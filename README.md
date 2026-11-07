@@ -80,6 +80,7 @@ src/
     block-queue/      Block queue logic (no browser APIs, unit-tested)
   tooling/
     typescript/       Shared tsconfig
+    tailwind/         Tailwind CSS 4 theme: marble, bronze, Cinzel + Jost
 docs/plans/           Planned work
 .agents/memory/       Architecture and decisions, for people and coding agents
 ```

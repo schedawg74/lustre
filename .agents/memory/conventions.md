@@ -15,11 +15,24 @@
 - Stop the click from reaching the post (`preventDefault` and `stopPropagation`): the post is a link.
 - Show results in one toast (`lib/x/toast.ts`). Offer Undo when the site has an inverse call.
 
+## Theme
+
+- The theme is modern Greek architecture: marble and travertine surfaces, ink text, gilded bronze as the only accent, and temple pigments as signal colors (terracotta = danger/block, ochre = warn/mute, Aegean = info/not interested, olive = success). Dark mode is basalt with marble text.
+- Tokens live in `src/tooling/tailwind/theme.css` (`@lustre/tailwind-config`). Components use the semantic colors (`bg-canvas`, `bg-surface`, `border-line`, `text-text`, `text-muted`, `text-accent`, `text-danger`, ...), never raw hex values or palette steps.
+- Fonts: Cinzel (`font-display`, uppercase with wide tracking: wordmark, section titles, numbers) and Jost (`font-sans`, body and controls). Both are bundled from `@fontsource-variable`; never load fonts from a CDN.
+- Shapes are cut stone: `rounded-stone` (3 px), not pills. Section titles use the `inscription` utility and a Roman numeral in bronze. Motifs: `fluted` (column flutes) and `meander` (Greek key band). Use them sparingly, once per surface.
+
 ## Popup
 
-- Plain CSS with tokens on `:root` and a `prefers-color-scheme: dark` override. Width 380 px.
+- Tailwind CSS 4 through `@tailwindcss/vite`. Shared building blocks are in `entrypoints/popup/ui.tsx` (`Section`, `Button`, `Toggle`, `Stat`, `Notice`, `Hint`, `fieldClass`). Width 380 px.
+- It follows the system light or dark setting through the theme's `prefers-color-scheme` override.
 - Settings take effect at once through storage watchers; there is no Save button.
 - New settings get a default in `DEFAULT_SETTINGS`.
+
+## Styles on x.com
+
+- `entrypoints/x.content/style.css` is plain CSS, not Tailwind: Tailwind's base styles would change x.com's own elements. It copies the theme's color values and uses system fonts, because x.com does not load the bundled fonts.
+- Post buttons keep x.com's grey idle color and take the theme's pigments on hover.
 
 ## Site text
 

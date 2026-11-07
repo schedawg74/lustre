@@ -12,9 +12,25 @@ import {
   type Settings,
   settingsItem,
 } from "@/lib/storage";
+import {
+  Button,
+  fieldClass,
+  Hint,
+  inputClass,
+  Notice,
+  Section,
+  Stat,
+  Toggle,
+} from "./ui";
 import { useNow, useStorageItem } from "./use-storage-item";
 
 const HEARTBEAT_STALE_MS = 15_000;
+
+const STATUS_TONE = {
+  idle: "text-muted",
+  paused: "text-warn",
+  running: "text-accent",
+} as const;
 const REVIEW_LIMIT = 100;
 
 const formatTime = (epochMs: number) =>
@@ -36,30 +52,6 @@ const useSettings = () => {
     settingsItem.setValue({ ...settings, ...patch });
   return [settings, update] as const;
 };
-
-const Toggle = ({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) => (
-  <label className="toggle">
-    <span>
-      {label}
-      {hint ? <small>{hint}</small> : null}
-    </span>
-    <input
-      checked={checked}
-      onChange={(event) => onChange(event.target.checked)}
-      type="checkbox"
-    />
-  </label>
-);
 
 const QueueSection = () => {
   const queue = useStorageItem(queueItem);
@@ -86,67 +78,60 @@ const QueueSection = () => {
     });
 
   return (
-    <section>
-      <header className="section-header">
-        <h2>Block queue</h2>
-        <span className={`pill pill-${runner.status}`}>{status}</span>
-      </header>
-      <dl className="stats">
-        <div>
-          <dt>Pending</dt>
-          <dd>{summary.pending}</dd>
-        </div>
-        <div>
-          <dt>Blocked</dt>
-          <dd>{summary.blocked}</dd>
-        </div>
-        <div>
-          <dt>Skipped</dt>
-          <dd>{summary.skipped}</dd>
-        </div>
-        <div>
-          <dt>Failed</dt>
-          <dd>{summary.failed}</dd>
-        </div>
+    <Section
+      aside={
+        <span
+          className={`inscription text-[10px] ${STATUS_TONE[runner.status]}`}
+        >
+          {status}
+        </span>
+      }
+      numeral="I"
+      title="Block queue"
+    >
+      <dl className="grid grid-cols-4 gap-2" data-testid="queue-stats">
+        <Stat label="Pending" tone="text-text" value={summary.pending} />
+        <Stat label="Blocked" tone="text-success" value={summary.blocked} />
+        <Stat label="Skipped" tone="text-muted" value={summary.skipped} />
+        <Stat label="Failed" tone="text-danger" value={summary.failed} />
       </dl>
       {runner.lastError ? (
-        <p className="notice notice-error">{runner.lastError}</p>
+        <Notice tone="danger">{runner.lastError}</Notice>
       ) : null}
       {runner.status === "running" && !tabConnected ? (
-        <p className="notice">
+        <Notice>
           Blocking runs inside an x.com tab. Open{" "}
-          <a href="https://x.com/home" rel="noopener" target="_blank">
+          <a
+            className="text-accent underline"
+            href="https://x.com/home"
+            rel="noopener"
+            target="_blank"
+          >
             x.com
           </a>{" "}
           and keep it open.
-        </p>
+        </Notice>
       ) : null}
-      <div className="row">
+      <div className="flex gap-2">
         {runner.status === "running" ? (
-          <button onClick={() => setStatus("paused")} type="button">
-            Pause
-          </button>
+          <Button onClick={() => setStatus("paused")}>Pause</Button>
         ) : (
-          <button
-            className="primary"
+          <Button
             disabled={summary.pending === 0}
             onClick={() => setStatus("running")}
-            type="button"
+            variant="primary"
           >
             Start blocking
-          </button>
+          </Button>
         )}
         {summary.failed > 0 ? (
-          <button
-            onClick={() => send({ type: "queue/retryFailed" })}
-            type="button"
-          >
+          <Button onClick={() => send({ type: "queue/retryFailed" })}>
             Retry failed
-          </button>
+          </Button>
         ) : null}
       </div>
       {summary.pending > 0 ? <ReviewList /> : null}
-    </section>
+    </Section>
   );
 };
 
@@ -168,43 +153,55 @@ const ReviewList = () => {
   }, [queue, filter]);
 
   return (
-    <details className="review">
-      <summary>Review pending accounts</summary>
-      <label className="sr-only" htmlFor={filterId}>
-        Filter pending accounts
-      </label>
-      <input
-        id={filterId}
-        onChange={(event) => setFilter(event.target.value)}
-        placeholder="Filter by name or @handle"
-        type="search"
-        value={filter}
-      />
-      <ul>
-        {pending.slice(0, REVIEW_LIMIT).map((entry) => (
-          <li key={entry.userId}>
-            <a
-              href={`https://x.com/${entry.screenName}`}
-              rel="noopener"
-              target="_blank"
+    <details className="group text-sm">
+      <summary className="cursor-pointer text-accent text-xs uppercase tracking-[0.14em] marker:text-accent">
+        Review pending accounts
+      </summary>
+      <div className="mt-3 flex flex-col gap-2">
+        <label className="sr-only" htmlFor={filterId}>
+          Filter pending accounts
+        </label>
+        <input
+          className={inputClass}
+          id={filterId}
+          onChange={(event) => setFilter(event.target.value)}
+          placeholder="Filter by name or @handle"
+          type="search"
+          value={filter}
+        />
+        <ul className="max-h-56 overflow-y-auto">
+          {pending.slice(0, REVIEW_LIMIT).map((entry) => (
+            <li
+              className="flex items-center justify-between gap-2 border-line border-b py-1.5"
+              key={entry.userId}
             >
-              <strong>{entry.name}</strong> <span>@{entry.screenName}</span>
-            </a>
-            <button
-              onClick={() => send({ type: "queue/skip", userId: entry.userId })}
-              title={`Never block @${entry.screenName} from this queue`}
-              type="button"
-            >
-              Skip
-            </button>
-          </li>
-        ))}
-      </ul>
-      {pending.length > REVIEW_LIMIT ? (
-        <p className="muted">
-          Showing {REVIEW_LIMIT} of {pending.length}. Filter to find others.
-        </p>
-      ) : null}
+              <a
+                className="truncate text-text hover:text-accent"
+                href={`https://x.com/${entry.screenName}`}
+                rel="noopener"
+                target="_blank"
+              >
+                <span className="font-medium">{entry.name}</span>{" "}
+                <span className="text-muted">@{entry.screenName}</span>
+              </a>
+              <Button
+                onClick={() =>
+                  send({ type: "queue/skip", userId: entry.userId })
+                }
+                size="sm"
+                title={`Never block @${entry.screenName} from this queue`}
+              >
+                Skip
+              </Button>
+            </li>
+          ))}
+        </ul>
+        {pending.length > REVIEW_LIMIT ? (
+          <Hint>
+            Showing {REVIEW_LIMIT} of {pending.length}. Filter to find others.
+          </Hint>
+        ) : null}
+      </div>
     </details>
   );
 };
@@ -234,59 +231,64 @@ const ListsSection = () => {
   const tracked = Object.values(lists).filter((list) => list.lastImportedAt);
 
   return (
-    <section>
-      <header className="section-header">
-        <h2>Block lists</h2>
-      </header>
-      <p className="muted">
+    <Section numeral="II" title="Block lists">
+      <Hint>
         Imports every member of an X list into the block queue. A tab opens on
         the list and scrolls through it; accounts you follow are skipped.
-      </p>
-      <form className="row" onSubmit={onSubmit}>
+      </Hint>
+      <form className="flex gap-2" onSubmit={onSubmit}>
         <label className="sr-only" htmlFor={inputId}>
           X list link
         </label>
         <input
+          className={inputClass}
           id={inputId}
           onChange={(event) => setInput(event.target.value)}
           placeholder="https://x.com/i/lists/…"
           type="url"
           value={input}
         />
-        <button className="primary" type="submit">
+        <Button type="submit" variant="primary">
           Import
-        </button>
+        </Button>
       </form>
-      {error ? <p className="notice notice-error">{error}</p> : null}
+      {error ? <Notice tone="danger">{error}</Notice> : null}
       {tracked.length > 0 ? (
-        <ul className="lists">
+        <ul className="flex flex-col">
           {tracked.map((list) => (
-            <li key={list.listId}>
-              <a href={list.url} rel="noopener" target="_blank">
-                List {list.listId}
-              </a>
-              <span className="muted">
-                {list.memberCount ?? 0} members ·{" "}
-                {formatDate(list.lastImportedAt ?? 0)}
+            <li
+              className="flex items-center justify-between gap-3 border-line border-b py-2 text-sm"
+              key={list.listId}
+            >
+              <span className="min-w-0">
+                <a
+                  className="text-text hover:text-accent"
+                  href={list.url}
+                  rel="noopener"
+                  target="_blank"
+                >
+                  List {list.listId}
+                </a>
+                <Hint>
+                  {list.memberCount ?? 0} members ·{" "}
+                  {formatDate(list.lastImportedAt ?? 0)}
+                </Hint>
               </span>
-              <button onClick={() => importList(list.listId)} type="button">
+              <Button onClick={() => importList(list.listId)} size="sm">
                 Re-import
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
       ) : null}
-    </section>
+    </Section>
   );
 };
 
 const ButtonsSection = () => {
   const [settings, update] = useSettings();
   return (
-    <section>
-      <header className="section-header">
-        <h2>Buttons on posts</h2>
-      </header>
+    <Section numeral="III" title="Buttons on posts">
       <Toggle
         checked={settings.showBlockButton}
         label="Block"
@@ -310,7 +312,7 @@ const ButtonsSection = () => {
         label="Hide the post right away"
         onChange={(hideAfterAction) => update({ hideAfterAction })}
       />
-    </section>
+    </Section>
   );
 };
 
@@ -333,10 +335,7 @@ const SafetySection = () => {
   };
 
   return (
-    <section>
-      <header className="section-header">
-        <h2>Safety</h2>
-      </header>
+    <Section numeral="IV" title="Safety">
       <Toggle
         checked={settings.skipFollowing}
         label="Never block accounts I follow"
@@ -347,12 +346,16 @@ const SafetySection = () => {
         label="Start blocking after an import"
         onChange={(autoStartAfterImport) => update({ autoStartAfterImport })}
       />
-      <label className="field" htmlFor={delayId}>
+      <label
+        className="flex items-center justify-between gap-4 text-sm"
+        htmlFor={delayId}
+      >
         <span>
           Seconds between blocks
-          <small>Slower is less likely to hit X's limits</small>
+          <Hint>Slower is less likely to hit X's limits</Hint>
         </span>
         <input
+          className={`${fieldClass} w-20 text-right tabular-nums`}
           id={delayId}
           max={30}
           min={1}
@@ -366,12 +369,13 @@ const SafetySection = () => {
           value={settings.blockDelayMs / 1000}
         />
       </label>
-      <label className="field field-stacked" htmlFor={allowlistId}>
+      <label className="flex flex-col gap-2 text-sm" htmlFor={allowlistId}>
         <span>
           Never block these handles
-          <small>One per line or separated by commas</small>
+          <Hint>One per line or separated by commas</Hint>
         </span>
         <textarea
+          className={`${inputClass} resize-y`}
           id={allowlistId}
           onBlur={saveAllowlist}
           onChange={(event) => setAllowlist(event.target.value)}
@@ -383,13 +387,21 @@ const SafetySection = () => {
           }
         />
       </label>
-    </section>
+    </Section>
   );
 };
 
 export const App = () => (
-  <main>
-    <h1>Lustre</h1>
+  <main className="w-[380px] bg-canvas font-sans text-text antialiased">
+    <header className="fluted flex flex-col items-center gap-1 px-5 pt-5 pb-3 text-text">
+      <h1 className="inscription pl-[0.3em] font-semibold text-2xl tracking-[0.3em]">
+        Lustre
+      </h1>
+      <p className="text-[10px] text-muted uppercase tracking-[0.28em]">
+        Purify your feeds
+      </p>
+      <div aria-hidden="true" className="meander mt-2 w-full text-accent/60" />
+    </header>
     <QueueSection />
     <ListsSection />
     <ButtonsSection />

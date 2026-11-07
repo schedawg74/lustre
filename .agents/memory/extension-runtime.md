@@ -4,7 +4,7 @@
 
 - Node is pinned to 24.22.2 in `.node-version` and `devEngines.runtime` (`onFail: download`). pnpm downloads that Node for scripts when the machine runs another version. 24.22.2 includes every fix in the Node security index up to 2026-11-07 (latest security release: 24.22.1, 2026-10-20). Check `https://github.com/nodejs/security-wg/blob/main/vuln/core/index.json` before you change it.
 - pnpm 12 with `minimumReleaseAge: 720` (12 hours) and `nodeLinker: hoisted`. Shared versions live in the `catalog` of `pnpm-workspace.yaml`.
-- TypeScript 7 (`tsc` is the native compiler). WXT 0.21 with `@wxt-dev/module-react`.
+- TypeScript 7 (`tsc` is the native compiler). WXT 0.21 with `@wxt-dev/module-react`. Tailwind CSS 4 through `@tailwindcss/vite` in `wxt.config.ts`; only extension pages (the popup) use it.
 - `bts.jsonc` records the Better-T-Stack scaffold. Keep it for `create-better-t-stack add`.
 
 ## Manifest

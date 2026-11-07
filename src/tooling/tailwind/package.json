@@ -1,0 +1,15 @@
+{
+  "name": "@lustre/tailwind-config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./theme.css": "./theme.css"
+  },
+  "dependencies": {
+    "@fontsource-variable/cinzel": "5.3.0",
+    "@fontsource-variable/jost": "5.3.0"
+  },
+  "peerDependencies": {
+    "tailwindcss": "catalog:"
+  }
+}

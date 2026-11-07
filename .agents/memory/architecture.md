@@ -16,6 +16,7 @@ Use manifests and lockfiles for dependency versions.
 | `packages/x-client/` | X web API calls (`client.ts`) and GraphQL parsing (`users.ts`). No extension or DOM APIs; `fetch` is injected |
 | `packages/block-queue/` | Pure functions over the block queue: add, next, record outcome, skip, retry, summary, delay |
 | `tooling/typescript/` | Shared `tsconfig` base |
+| `tooling/tailwind/` | Tailwind CSS 4 theme (`theme.css`): colors, fonts, motifs. See [conventions](conventions.md#theme) |
 
 Packages have no build step. They export source files by subpath (`"./*": "./src/*.ts"`), for example `@lustre/x-client/client`.
 

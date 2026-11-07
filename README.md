@@ -34,8 +34,19 @@ docker compose up --build   # the production image on http://127.0.0.1:3000
 ```
 
 API, data model, and privacy decisions:
-[.agents/memory/server.md](.agents/memory/server.md). Hetzner layout, deploy,
-backup, and restore: [.agents/memory/infrastructure.md](.agents/memory/infrastructure.md).
+[.agents/memory/server.md](.agents/memory/server.md).
+
+## Hosting
+
+One Hetzner Cloud server runs everything behind one Caddy: the website on the
+apex domain (`www` redirects to it) and the API on `api.<domain>`. Pulumi
+(`src/packages/infra/platform`) creates the server; the runtime files
+(`src/packages/infra/host`) and the website ship over Tailscale with the manual
+`Deploy server` and `Deploy website` workflows. A website deploy is a new
+release folder and one symlink switch; the last 5 releases stay for a rollback.
+Hosts, domains, Caddy routes, deploy, rollback, backup, and restore:
+[.agents/memory/infrastructure.md](.agents/memory/infrastructure.md). First
+setup: [src/packages/infra/README.md](src/packages/infra/README.md).
 
 ## Install (unpacked)
 
@@ -99,7 +110,7 @@ src/
     block-queue/      Block queue logic (no browser APIs, unit-tested)
     api/              Blocklist API schemas (Zod) and typed fetch client
     db/               SQLite schema and migrations (Drizzle, better-sqlite3)
-    infra/            Pulumi program for Hetzner Cloud
+    infra/            Pulumi program and host runtime files for Hetzner Cloud
   tooling/
     typescript/       Shared tsconfig
     tailwind/         Tailwind CSS 4 theme: marble, bronze, Cinzel + Jost

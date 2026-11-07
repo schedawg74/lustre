@@ -10,7 +10,7 @@ The notes describe repository state on 2026-11-07 (v0.1, X only, blocklist serve
 | Change anything that calls x.com or reads its DOM | [X platform](x-platform.md) |
 | Change UI, injected styles, privacy, or naming | [Conventions](conventions.md) |
 | Change the blocklist server, its API, or its database | [Server](server.md) |
-| Change Hetzner resources, deploys, or backups | [Infrastructure](infrastructure.md) |
+| Change Hetzner resources, Caddy, server or website deploys, or backups | [Infrastructure](infrastructure.md) |
 | Select and run tests | [Testing](testing.md) |
 | Select models or configure coding agents | [Agent workflow](agent-workflow.md) |
 

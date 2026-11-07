@@ -18,7 +18,7 @@ Use manifests and lockfiles for dependency versions.
 | `apps/server/` | Express 5 blocklist server: routers, services, middleware. Bundled by tsdown into `dist/index.mjs`; Docker image in `Dockerfile` |
 | `packages/api/` | Zod schemas and types of the server API (`v1.ts`) and the typed fetch client (`client.ts`) |
 | `packages/db/` | SQLite through Drizzle ORM and better-sqlite3: schema, migrations, `openDatabase`, `runMigrations` |
-| `packages/infra/` | Pulumi program for Hetzner Cloud (`platform/`). See [infrastructure](infrastructure.md) |
+| `packages/infra/` | Pulumi program for Hetzner Cloud (`platform/`) and the host runtime files (`host/`). See [infrastructure](infrastructure.md) |
 | `tooling/typescript/` | Shared `tsconfig` base |
 | `tooling/tailwind/` | Tailwind CSS 4 theme (`theme.css`): colors, fonts, motifs. See [conventions](conventions.md#theme) |
 

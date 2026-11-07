@@ -13,7 +13,7 @@ Read the affected package's manifest before selecting a command.
 | Server image | `docker build -f src/apps/server/Dockerfile .` | Docker. Run it with `docker compose up --build` (port 3000) |
 | End to end | `pnpm test:e2e` | Needs `pnpm build` first and Playwright Chromium (`pnpm --filter @lustre/extension exec playwright install chromium`). Headless |
 
-CI (`.github/workflows/ci.yml`) runs all of them on every push to `main` and every PR. `deploy-server.yml` runs CI again before it pushes an image.
+CI (`.github/workflows/ci.yml`) runs all of them on every push to `main` and every PR. Its `host` job checks `src/packages/infra/host` (`docker compose config`, `caddy validate` in the Caddy image, `shellcheck`) and runs `actionlint` on the workflows. `deploy-server.yml` and `deploy-website.yml` run CI again before they deploy.
 
 ## What the end-to-end test covers
 
@@ -27,7 +27,7 @@ Tabs that the extension opens with `browser.tabs.create` can load before Playwri
 ## Server and infra tests
 
 - `src/apps/server/src/app.test.ts` calls the Express app with supertest against an in-memory SQLite database with all migrations (`createTestDatabase` from `@lustre/db/testing`). It injects the clock and small rate limits. It covers auth, validation, idempotent reports, the blocklist filters and pages, CORS, body and rate limits.
-- `src/packages/infra/platform/config.test.ts` reads stack values with Pulumi mocks. `host.test.ts` checks the rendered cloud-init and host files. No test calls Hetzner, Tailscale, or Object Storage; `pulumi preview` and the deploy workflows are not tested.
+- `src/packages/infra/platform/config.test.ts` reads stack values with Pulumi mocks. `firewall.test.ts` checks the rules with and without `cloudflareProxy`. `host.test.ts` checks the rendered cloud-init (and runs `cloud-init schema` when `cloud-init` is installed) and that `host/` uses only the variables that cloud-init writes. No test calls Hetzner, Tailscale, or Object Storage; `pulumi preview` and the deploy workflows are not tested.
 
 ## Adding tests
 
